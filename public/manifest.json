@@ -1,0 +1,21 @@
+{
+  "name": "Personal Finance Tracker",
+  "short_name": "Finance",
+  "description": "A minimalist PWA for tracking personal finances.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#f8fafc",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
