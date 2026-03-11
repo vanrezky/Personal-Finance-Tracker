@@ -56,7 +56,7 @@ export function TokenSetup({ onComplete }: TokenSetupProps) {
       <motion.div 
         initial={{ opacity: 0, y: 20 }} 
         animate={{ opacity: 1, y: 0 }} 
-        className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-200/50 max-w-xl w-full mb-6"
+        className="bg-white p-6 sm:p-8 rounded-3xl shadow-xl shadow-slate-200/50 max-w-xl w-full mb-6"
       >
         <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mb-6">
           <KeyRound className="w-8 h-8" />
@@ -114,51 +114,47 @@ export function TokenSetup({ onComplete }: TokenSetupProps) {
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              <div className="bg-white mt-4 p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100 space-y-8">
+              <div className="bg-white mt-4 p-5 sm:p-8 rounded-3xl shadow-sm border border-slate-100 space-y-8">
                 
                 {/* Step 1 */}
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0 w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center font-bold">1</div>
-                  <div>
-                    <h3 className="font-semibold text-slate-900 flex items-center gap-2 mb-2">
-                      <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Buat Spreadsheet
+                <div className="flex gap-3 sm:gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center font-bold text-sm sm:text-base">1</div>
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-slate-900 flex items-center gap-2 mb-2 text-sm sm:text-base">
+                      <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" /> Buat Spreadsheet
                     </h3>
-                    <p className="text-sm text-slate-600 mb-3">Buka <a href="https://sheets.google.com" target="_blank" rel="noreferrer" className="text-emerald-600 hover:underline font-medium">Google Sheets</a> dan buat file baru (misal: "Keuangan PWA"). Buat judul kolom di baris pertama persis seperti ini:</p>
-                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 overflow-x-auto">
-                      <table className="w-full text-sm text-left">
-                        <thead>
-                          <tr className="text-slate-700">
-                            <th className="px-2 py-1 border-r border-slate-200">A1: Date</th>
-                            <th className="px-2 py-1 border-r border-slate-200">B1: Type</th>
-                            <th className="px-2 py-1 border-r border-slate-200">C1: Category</th>
-                            <th className="px-2 py-1 border-r border-slate-200">D1: Amount</th>
-                            <th className="px-2 py-1">E1: Note</th>
-                          </tr>
-                        </thead>
-                      </table>
+                    <p className="text-xs sm:text-sm text-slate-600 mb-3">Buka <a href="https://sheets.google.com" target="_blank" rel="noreferrer" className="text-emerald-600 hover:underline font-medium">Google Sheets</a> dan buat file baru. Buat judul kolom di baris pertama persis seperti ini:</p>
+                    <div className="bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-200">
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs sm:text-sm font-medium text-slate-700">
+                        <div className="bg-white px-2 py-1.5 rounded border border-slate-100 shadow-sm text-center">A1: Date</div>
+                        <div className="bg-white px-2 py-1.5 rounded border border-slate-100 shadow-sm text-center">B1: Type</div>
+                        <div className="bg-white px-2 py-1.5 rounded border border-slate-100 shadow-sm text-center">C1: Category</div>
+                        <div className="bg-white px-2 py-1.5 rounded border border-slate-100 shadow-sm text-center">D1: Amount</div>
+                        <div className="bg-white px-2 py-1.5 rounded border border-slate-100 shadow-sm text-center">E1: Note</div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Step 2 */}
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0 w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center font-bold">2</div>
-                  <div className="w-full">
-                    <h3 className="font-semibold text-slate-900 flex items-center gap-2 mb-2">
-                      <Code className="w-4 h-4 text-emerald-600" /> Masukkan Kode Script
+                <div className="flex gap-3 sm:gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center font-bold text-sm sm:text-base">2</div>
+                  <div className="w-full min-w-0">
+                    <h3 className="font-semibold text-slate-900 flex items-center gap-2 mb-2 text-sm sm:text-base">
+                      <Code className="w-4 h-4 text-emerald-600 shrink-0" /> Masukkan Kode Script
                     </h3>
-                    <p className="text-sm text-slate-600 mb-3">Di menu Spreadsheet, klik <strong>Ekstensi &gt; Apps Script</strong>. Hapus semua kode yang ada, lalu paste kode di bawah ini:</p>
+                    <p className="text-xs sm:text-sm text-slate-600 mb-3">Di menu Spreadsheet, klik <strong>Ekstensi &gt; Apps Script</strong>. Hapus semua kode yang ada, lalu paste kode di bawah ini:</p>
                     
                     <div className="relative group">
                       <div className="absolute right-2 top-2">
                         <button 
                           onClick={copyCode}
-                          className="p-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors flex items-center gap-1 text-xs font-medium"
+                          className="p-1.5 sm:p-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors flex items-center gap-1 text-[10px] sm:text-xs font-medium"
                         >
-                          {copied ? <><Check className="w-3.5 h-3.5"/> Dicopy</> : <><Copy className="w-3.5 h-3.5"/> Copy</>}
+                          {copied ? <><Check className="w-3 h-3 sm:w-3.5 sm:h-3.5"/> Dicopy</> : <><Copy className="w-3 h-3 sm:w-3.5 sm:h-3.5"/> Copy</>}
                         </button>
                       </div>
-                      <pre className="bg-slate-900 text-slate-50 p-4 rounded-xl text-xs overflow-x-auto font-mono leading-relaxed">
+                      <pre className="bg-slate-900 text-slate-50 p-3 sm:p-4 rounded-xl text-[10px] sm:text-xs overflow-x-auto font-mono leading-relaxed">
                         {APPS_SCRIPT_CODE}
                       </pre>
                     </div>
@@ -166,18 +162,18 @@ export function TokenSetup({ onComplete }: TokenSetupProps) {
                 </div>
 
                 {/* Step 3 */}
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0 w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center font-bold">3</div>
-                  <div>
-                    <h3 className="font-semibold text-slate-900 flex items-center gap-2 mb-2">
-                      <Globe className="w-4 h-4 text-emerald-600" /> Deploy & Dapatkan URL
+                <div className="flex gap-3 sm:gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center font-bold text-sm sm:text-base">3</div>
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-slate-900 flex items-center gap-2 mb-2 text-sm sm:text-base">
+                      <Globe className="w-4 h-4 text-emerald-600 shrink-0" /> Deploy & Dapatkan URL
                     </h3>
-                    <ul className="text-sm text-slate-600 space-y-2 list-disc pl-4">
+                    <ul className="text-xs sm:text-sm text-slate-600 space-y-2 list-disc pl-4">
                       <li>Klik tombol biru <strong>Terapkan (Deploy) &gt; Deployment baru</strong> di pojok kanan atas.</li>
                       <li>Pilih jenis: <strong>Aplikasi Web (Web app)</strong>.</li>
                       <li>Beri deskripsi bebas (misal: "API Keuangan").</li>
                       <li>Jalankan sebagai (Execute as): <strong>Saya (Email Anda)</strong>.</li>
-                      <li>Siapa yang memiliki akses: <strong>Siapa saja (Anyone)</strong>. <span className="text-rose-500 text-xs block mt-0.5">*Penting agar aplikasi bisa mengirim data tanpa login ulang.</span></li>
+                      <li>Siapa yang memiliki akses: <strong>Siapa saja (Anyone)</strong>. <span className="text-rose-500 text-[10px] sm:text-xs block mt-0.5">*Penting agar aplikasi bisa mengirim data tanpa login ulang.</span></li>
                       <li>Klik <strong>Terapkan (Deploy)</strong>. Jika diminta otorisasi, izinkan (Lanjutan &gt; Buka script).</li>
                       <li>Copy <strong>URL Aplikasi Web</strong> yang muncul, lalu paste ke kolom input di atas!</li>
                     </ul>

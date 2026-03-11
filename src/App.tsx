@@ -4,7 +4,7 @@ import { Dashboard } from './components/Dashboard';
 import { TransactionList } from './components/TransactionList';
 import { TransactionForm } from './components/TransactionForm';
 import { TokenSetup } from './components/TokenSetup';
-import { Plus, Activity, ListOrdered, LogOut } from 'lucide-react';
+import { Plus, Activity, ListOrdered, LogOut, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 
@@ -14,6 +14,16 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'history'>('dashboard');
   const [isLoaded, setIsLoaded] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
 
   useEffect(() => {
     const savedToken = localStorage.getItem('spreadsheet_token');
@@ -40,7 +50,21 @@ export default function App() {
       {/* Header */}
       <header className="sticky top-0 z-30 bg-slate-50/80 backdrop-blur-md border-b border-slate-200/50 px-6 py-4 flex items-center justify-between">
         <h1 className="text-xl font-bold tracking-tight text-slate-900">Finance</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {deferredPrompt && (
+            <button
+              onClick={async () => {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') setDeferredPrompt(null);
+              }}
+              className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors flex items-center gap-1"
+              title="Install App"
+            >
+              <Download className="w-4 h-4" />
+              <span className="text-xs font-semibold hidden sm:inline">Install</span>
+            </button>
+          )}
           <SyncIndicator />
           <button 
             onClick={() => setShowLogoutConfirm(true)}

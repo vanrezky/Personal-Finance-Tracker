@@ -162,7 +162,7 @@ export function TransactionForm({ onClose }: TransactionFormProps) {
                   <label 
                     key={cat} 
                     className={cn(
-                      "cursor-pointer text-center px-1 py-3 rounded-xl border text-xs font-medium transition-all select-none", 
+                      "cursor-pointer flex items-center justify-center text-center px-1 py-3 rounded-xl border text-xs font-medium transition-all select-none h-full min-h-[3rem]", 
                       category === cat 
                         ? (type === 'income' ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-rose-50 border-rose-200 text-rose-700") 
                         : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
