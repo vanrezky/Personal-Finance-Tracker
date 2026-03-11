@@ -23,7 +23,8 @@ service cloud.firestore {
       return data.keys().hasAll(['name', 'members', 'createdAt']) &&
              data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
              data.members is list && data.members.size() > 0 && data.members.size() <= 20 &&
-             data.createdAt is string;
+             data.createdAt is string &&
+             (!('payday' in data) || (data.payday is int && data.payday >= 1 && data.payday <= 31));
     }
     
     function isValidTransaction(data) {

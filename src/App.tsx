@@ -3,8 +3,10 @@ import { Dashboard } from './components/Dashboard';
 import { TransactionList } from './components/TransactionList';
 import { TransactionForm } from './components/TransactionForm';
 import { AuthSetup } from './components/AuthSetup';
+import { Reports } from './components/Reports';
+import { Settings } from './components/Settings';
 import { auth, db, logout, onSnapshot, collection, query, orderBy, setDoc, doc, getDoc } from './firebase';
-import { Plus, Activity, ListOrdered, LogOut, Download, CloudOff } from 'lucide-react';
+import { Plus, Activity, ListOrdered, LogOut, Download, CloudOff, PieChart, Settings as SettingsIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { handleFirestoreError, OperationType } from './lib/firestore-errors';
@@ -13,7 +15,7 @@ export default function App() {
   const [householdId, setHouseholdId] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'history'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'history' | 'reports' | 'settings'>('dashboard');
   const [isLoaded, setIsLoaded] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -107,6 +109,29 @@ export default function App() {
     return <AuthSetup onComplete={setHouseholdId} />;
   }
 
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return <Dashboard householdId={householdId} />;
+      case 'history':
+        return (
+          <TransactionList 
+            householdId={householdId} 
+            onEdit={(transaction) => {
+              setEditingTransaction(transaction);
+              setIsFormOpen(true);
+            }} 
+          />
+        );
+      case 'reports':
+        return <Reports householdId={householdId} />;
+      case 'settings':
+        return <Settings householdId={householdId} />;
+      default:
+        return <Dashboard householdId={householdId} />;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-24">
       {/* Header */}
@@ -153,35 +178,17 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="px-6 py-8 max-w-2xl mx-auto space-y-8">
+      <main className="px-6 py-8 max-w-2xl mx-auto">
         <AnimatePresence mode="wait">
-          {activeTab === 'dashboard' ? (
-            <motion.div
-              key="dashboard"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.2 }}
-            >
-              <Dashboard householdId={householdId} />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="history"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-            >
-              <TransactionList 
-                householdId={householdId} 
-                onEdit={(transaction) => {
-                  setEditingTransaction(transaction);
-                  setIsFormOpen(true);
-                }} 
-              />
-            </motion.div>
-          )}
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            {renderContent()}
+          </motion.div>
         </AnimatePresence>
       </main>
 
@@ -199,9 +206,6 @@ export default function App() {
             <span className="text-[10px] font-semibold uppercase tracking-wider">Dashboard</span>
           </button>
 
-          {/* Floating Action Button Placeholder for spacing */}
-          <div className="w-16" />
-
           <button
             onClick={() => setActiveTab('history')}
             className={cn(
@@ -211,6 +215,31 @@ export default function App() {
           >
             <ListOrdered className="w-6 h-6 mb-1" />
             <span className="text-[10px] font-semibold uppercase tracking-wider">History</span>
+          </button>
+
+          {/* Floating Action Button Placeholder for spacing */}
+          <div className="w-16" />
+
+          <button
+            onClick={() => setActiveTab('reports')}
+            className={cn(
+              "flex flex-col items-center p-3 rounded-2xl flex-1 transition-colors",
+              activeTab === 'reports' ? "text-slate-900" : "text-slate-400 hover:text-slate-600"
+            )}
+          >
+            <PieChart className="w-6 h-6 mb-1" />
+            <span className="text-[10px] font-semibold uppercase tracking-wider">Reports</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={cn(
+              "flex flex-col items-center p-3 rounded-2xl flex-1 transition-colors",
+              activeTab === 'settings' ? "text-slate-900" : "text-slate-400 hover:text-slate-600"
+            )}
+          >
+            <SettingsIcon className="w-6 h-6 mb-1" />
+            <span className="text-[10px] font-semibold uppercase tracking-wider">Settings</span>
           </button>
 
           {/* Floating Action Button */}

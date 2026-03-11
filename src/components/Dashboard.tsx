@@ -1,14 +1,23 @@
 import { useState, useEffect } from 'react';
-import { db, collection, onSnapshot, query } from '../firebase';
+import { db, collection, onSnapshot, query, doc, getDoc } from '../firebase';
 import { formatCurrency } from '../lib/utils';
-import { ArrowDownRight, ArrowUpRight, Wallet } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Wallet, CalendarDays } from 'lucide-react';
 import { motion } from 'motion/react';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { parseISO, isWithinInterval, startOfDay, endOfDay, setDate, subMonths, addMonths } from 'date-fns';
 
 export function Dashboard({ householdId }: { householdId: string }) {
   const [transactions, setTransactions] = useState<any[] | null>(null);
+  const [payday, setPayday] = useState<number>(25); // Default payday is 25th
 
   useEffect(() => {
+    const householdPath = `households/${householdId}`;
+    getDoc(doc(db, householdPath)).then(snap => {
+      if (snap.exists() && snap.data().payday) {
+        setPayday(snap.data().payday);
+      }
+    });
+
     const path = `households/${householdId}/transactions`;
     const q = query(collection(db, path));
     
@@ -26,6 +35,24 @@ export function Dashboard({ householdId }: { householdId: string }) {
     return () => unsubscribe();
   }, [householdId]);
 
+  // Calculate current cycle dates
+  const now = new Date();
+  let cycleStart: Date;
+  let cycleEnd: Date;
+
+  if (now.getDate() >= payday) {
+    cycleStart = startOfDay(setDate(now, payday));
+    cycleEnd = endOfDay(setDate(addMonths(now, 1), payday - 1));
+  } else {
+    cycleStart = startOfDay(setDate(subMonths(now, 1), payday));
+    cycleEnd = endOfDay(setDate(now, payday - 1));
+  }
+
+  const cycleTransactions = (transactions || []).filter(t => {
+    const tDate = parseISO(t.date);
+    return isWithinInterval(tDate, { start: cycleStart, end: cycleEnd });
+  });
+
   const { income, expense, balance } = (transactions || []).reduce(
     (acc, curr) => {
       if (curr.type === 'income') {
@@ -40,8 +67,18 @@ export function Dashboard({ householdId }: { householdId: string }) {
     { income: 0, expense: 0, balance: 0 }
   );
 
+  const { cycleIncome, cycleExpense } = cycleTransactions.reduce(
+    (acc, curr) => {
+      if (curr.type === 'income') acc.cycleIncome += curr.amount;
+      else acc.cycleExpense += curr.amount;
+      return acc;
+    },
+    { cycleIncome: 0, cycleExpense: 0 }
+  );
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Total Balance Card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -52,47 +89,60 @@ export function Dashboard({ householdId }: { householdId: string }) {
         </div>
         
         <div className="relative z-10">
-          <p className="text-slate-400 text-sm font-medium mb-1">Total Balance</p>
+          <p className="text-slate-400 text-sm font-medium mb-1">Total Saldo</p>
           <h2 className="text-4xl font-semibold tracking-tight">
             {formatCurrency(balance)}
           </h2>
         </div>
       </motion.div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-emerald-50 p-5 rounded-3xl border border-emerald-100/50"
-        >
-          <div className="flex items-center gap-2 text-emerald-600 mb-2">
-            <div className="bg-emerald-100 p-1.5 rounded-full">
-              <ArrowDownRight className="w-4 h-4" />
-            </div>
-            <span className="text-sm font-medium">Income</span>
+      {/* Monthly Cycle Summary */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2 text-slate-900 font-semibold">
+            <CalendarDays className="w-5 h-5 text-indigo-600" />
+            <h3 className="text-sm">Bulan Ini (Gajian tgl {payday})</h3>
           </div>
-          <p className="text-lg font-semibold text-emerald-950">
-            {formatCurrency(income)}
-          </p>
-        </motion.div>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            Cycle: {cycleStart.getDate()} - {cycleEnd.getDate()}
+          </span>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-rose-50 p-5 rounded-3xl border border-rose-100/50"
-        >
-          <div className="flex items-center gap-2 text-rose-600 mb-2">
-            <div className="bg-rose-100 p-1.5 rounded-full">
-              <ArrowUpRight className="w-4 h-4" />
+        <div className="grid grid-cols-2 gap-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-emerald-50 p-5 rounded-3xl border border-emerald-100/50"
+          >
+            <div className="flex items-center gap-2 text-emerald-600 mb-2">
+              <div className="bg-emerald-100 p-1.5 rounded-full">
+                <ArrowDownRight className="w-4 h-4" />
+              </div>
+              <span className="text-xs font-bold uppercase tracking-wider">Income</span>
             </div>
-            <span className="text-sm font-medium">Expense</span>
-          </div>
-          <p className="text-lg font-semibold text-rose-950">
-            {formatCurrency(expense)}
-          </p>
-        </motion.div>
+            <p className="text-lg font-bold text-emerald-950">
+              {formatCurrency(cycleIncome)}
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-rose-50 p-5 rounded-3xl border border-rose-100/50"
+          >
+            <div className="flex items-center gap-2 text-rose-600 mb-2">
+              <div className="bg-rose-100 p-1.5 rounded-full">
+                <ArrowUpRight className="w-4 h-4" />
+              </div>
+              <span className="text-xs font-bold uppercase tracking-wider">Expense</span>
+            </div>
+            <p className="text-lg font-bold text-rose-950">
+              {formatCurrency(cycleExpense)}
+            </p>
+          </motion.div>
+        </div>
       </div>
     </div>
   );
