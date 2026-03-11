@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { auth, loginWithGoogle, db, doc, setDoc, getDoc } from '../firebase';
 import { motion } from 'motion/react';
-import { Wallet, LogIn, Users } from 'lucide-react';
+import { Wallet, LogIn, Users, Plus } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
 export function AuthSetup({ onComplete }: { onComplete: (householdId: string) => void }) {
@@ -9,6 +9,7 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
   const [householdId, setHouseholdId] = useState('');
   const [payday, setPayday] = useState('25');
   const [displayName, setDisplayName] = useState('');
+  const [setupMode, setSetupMode] = useState<'choice' | 'create' | 'join'>('choice');
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState('');
 
@@ -22,6 +23,20 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
     });
     return () => unsubscribe();
   }, []);
+
+  const generateRandomId = () => {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < 8; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+
+  const handleStartCreate = () => {
+    setHouseholdId(generateRandomId());
+    setSetupMode('create');
+  };
 
   const checkUserHousehold = async (uid: string) => {
     const path = `users/${uid}`;
@@ -70,7 +85,7 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
     setIsJoining(true);
     setError('');
     
-    const hid = householdId.trim();
+    const hid = householdId.trim().toLowerCase();
     const householdPath = `households/${hid}`;
     const userPath = `users/${user.uid}`;
     
@@ -78,7 +93,10 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
       const householdRef = doc(db, 'households', hid);
       const householdDoc = await getDoc(householdRef);
       
-      if (householdDoc.exists()) {
+      if (setupMode === 'join') {
+        if (!householdDoc.exists()) {
+          throw new Error('ID tidak ditemukan. Pastikan ID yang Anda masukkan benar.');
+        }
         // Join existing
         const members = householdDoc.data().members || [];
         if (!members.includes(user.uid)) {
@@ -88,6 +106,12 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
         }
       } else {
         // Create new
+        if (householdDoc.exists()) {
+          // Rare collision, regenerate
+          const newId = generateRandomId();
+          setHouseholdId(newId);
+          throw new Error('Terjadi kesalahan teknis, silakan coba klik tombol simpan sekali lagi.');
+        }
         await setDoc(householdRef, {
           name: 'My Household',
           members: [user.uid],
@@ -107,7 +131,7 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
       if (err.message?.includes('Missing or insufficient permissions') || err.message?.includes('permission-denied')) {
         handleFirestoreError(err, OperationType.WRITE, householdPath);
       }
-      setError(err.message || 'Gagal bergabung dengan household');
+      setError(err.message || 'Gagal memproses ID');
     } finally {
       setIsJoining(false);
     }
@@ -137,6 +161,34 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
             <LogIn className="w-5 h-5" />
             Login dengan Google
           </button>
+        ) : setupMode === 'choice' ? (
+          <div className="space-y-4">
+            <button
+              onClick={handleStartCreate}
+              className="w-full p-6 bg-indigo-50 text-indigo-700 rounded-3xl border-2 border-indigo-100 hover:border-indigo-300 transition-all text-left group"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="p-2 bg-indigo-600 text-white rounded-xl">
+                  <Plus className="w-5 h-5" />
+                </div>
+              </div>
+              <h3 className="font-bold">Buat ID Baru</h3>
+              <p className="text-xs text-indigo-600/70">Mulai catatan keuangan baru untuk keluarga Anda.</p>
+            </button>
+
+            <button
+              onClick={() => setSetupMode('join')}
+              className="w-full p-6 bg-slate-50 text-slate-700 rounded-3xl border-2 border-slate-100 hover:border-slate-300 transition-all text-left group"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="p-2 bg-slate-600 text-white rounded-xl">
+                  <Users className="w-5 h-5" />
+                </div>
+              </div>
+              <h3 className="font-bold">Gabung ID Lama</h3>
+              <p className="text-xs text-slate-600/70">Masukkan ID yang sudah dibuat oleh pasangan Anda.</p>
+            </button>
+          </div>
         ) : (
           <form onSubmit={handleJoinHousehold} className="space-y-4 text-left">
             <div className="space-y-2">
@@ -151,29 +203,35 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">ID Keluarga (Household ID)</label>
-              <p className="text-[10px] text-slate-500 mb-1">
-                Buat ID baru atau masukkan ID yang sama dengan pasangan Anda.
-              </p>
-              <div className="relative">
-                <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="text"
-                  required
-                  value={householdId}
-                  onChange={(e) => setHouseholdId(e.target.value)}
-                  placeholder="Contoh: keluarga-budi"
-                  className="w-full pl-12 pr-4 py-3 bg-slate-50 border-none rounded-2xl text-slate-900 focus:ring-2 focus:ring-indigo-500 transition-shadow"
-                />
+            {setupMode === 'join' ? (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700">ID Keuangan</label>
+                <div className="relative">
+                  <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type="text"
+                    required
+                    value={householdId}
+                    onChange={(e) => setHouseholdId(e.target.value)}
+                    placeholder="Masukkan ID dari pasangan"
+                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border-none rounded-2xl text-slate-900 focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                  />
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700">ID Keuangan Anda</label>
+                <div className="p-4 bg-slate-100 rounded-2xl font-mono text-center text-lg font-bold text-slate-900 tracking-widest border-2 border-dashed border-slate-200">
+                  {householdId}
+                </div>
+                <p className="text-[10px] text-slate-500 text-center">
+                  Simpan ID ini untuk dibagikan ke pasangan Anda nanti.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">Tanggal Gajian</label>
-              <p className="text-[10px] text-slate-500 mb-1">
-                Digunakan untuk menghitung siklus bulanan di Dashboard.
-              </p>
               <input
                 type="number"
                 min="1"
@@ -186,16 +244,25 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
             </div>
 
             {error && (
-              <p className="text-rose-500 text-sm">{error}</p>
+              <p className="text-rose-500 text-xs bg-rose-50 p-3 rounded-xl">{error}</p>
             )}
 
-            <button
-              type="submit"
-              disabled={isJoining || !householdId.trim() || !displayName.trim()}
-              className="w-full py-4 px-4 bg-indigo-600 text-white font-medium rounded-2xl hover:bg-indigo-700 transition-colors disabled:opacity-50 mt-4"
-            >
-              {isJoining ? 'Memproses...' : 'Mulai Gunakan'}
-            </button>
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setSetupMode('choice')}
+                className="flex-1 py-4 px-4 bg-slate-100 text-slate-700 font-medium rounded-2xl hover:bg-slate-200 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={isJoining || !householdId.trim() || !displayName.trim()}
+                className="flex-[2] py-4 px-4 bg-indigo-600 text-white font-medium rounded-2xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              >
+                {isJoining ? 'Memproses...' : setupMode === 'create' ? 'Buat Sekarang' : 'Gabung Sekarang'}
+              </button>
+            </div>
           </form>
         )}
       </motion.div>

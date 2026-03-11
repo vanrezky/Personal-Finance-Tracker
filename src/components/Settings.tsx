@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { auth, db, doc, setDoc, getDoc } from '../firebase';
 import { motion } from 'motion/react';
-import { User, Calendar, Save, CheckCircle2 } from 'lucide-react';
+import { User, Calendar, Save, CheckCircle2, Copy, Users } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
 export function Settings({ householdId }: { householdId: string }) {
@@ -10,6 +10,7 @@ export function Settings({ householdId }: { householdId: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -60,6 +61,12 @@ export function Settings({ householdId }: { householdId: string }) {
     } finally {
       setSaving(false);
     }
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(householdId);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   if (loading) {
@@ -129,6 +136,28 @@ export function Settings({ householdId }: { householdId: string }) {
             )}
           </button>
         </form>
+      </div>
+
+      <div className="bg-indigo-50 p-6 rounded-3xl border border-indigo-100">
+        <div className="flex items-center gap-2 text-indigo-700 font-bold mb-2">
+          <Users className="w-5 h-5" />
+          <h3>ID Keuangan Keluarga</h3>
+        </div>
+        <p className="text-xs text-indigo-600/70 mb-4">
+          Bagikan ID ini kepada pasangan Anda agar mereka dapat bergabung dan melihat catatan keuangan yang sama.
+        </p>
+        <div className="flex items-center gap-2">
+          <div className="flex-1 bg-white p-4 rounded-2xl font-mono text-center font-bold text-slate-900 tracking-widest border border-indigo-200">
+            {householdId}
+          </div>
+          <button
+            onClick={copyToClipboard}
+            className="p-4 bg-white text-indigo-600 rounded-2xl border border-indigo-200 hover:bg-indigo-50 transition-colors relative"
+            title="Salin ID"
+          >
+            {copied ? <CheckCircle2 className="w-6 h-6 text-emerald-500" /> : <Copy className="w-6 h-6" />}
+          </button>
+        </div>
       </div>
     </div>
   );
