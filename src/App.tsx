@@ -4,7 +4,7 @@ import { Dashboard } from './components/Dashboard';
 import { TransactionList } from './components/TransactionList';
 import { TransactionForm } from './components/TransactionForm';
 import { TokenSetup } from './components/TokenSetup';
-import { db } from './db';
+import { db, Transaction } from './db';
 import { Plus, Activity, ListOrdered, LogOut, Download, CloudDownload, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -12,6 +12,7 @@ import { cn } from './lib/utils';
 export default function App() {
   const [token, setToken] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editData, setEditData] = useState<Transaction | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'history'>('dashboard');
   const [isLoaded, setIsLoaded] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -68,12 +69,14 @@ export default function App() {
             } catch (e) {}
 
             return {
+              syncId: item.syncId || crypto.randomUUID(),
               date: isoDate,
               type: item.type,
               category: item.category,
               amount: Number(item.amount),
               note: item.note || '',
-              synced: 1
+              synced: 1,
+              syncAction: null
             };
           });
           
@@ -194,7 +197,12 @@ export default function App() {
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
             >
-              <TransactionList />
+              <TransactionList 
+                onEdit={(tx) => {
+                  setEditData(tx);
+                  setIsFormOpen(true);
+                }}
+              />
             </motion.div>
           )}
         </AnimatePresence>
@@ -240,7 +248,13 @@ export default function App() {
 
       {/* Transaction Form Modal */}
       {isFormOpen && (
-        <TransactionForm onClose={() => setIsFormOpen(false)} />
+        <TransactionForm 
+          onClose={() => {
+            setIsFormOpen(false);
+            setEditData(null);
+          }} 
+          editData={editData}
+        />
       )}
 
       {/* Logout Confirmation Modal */}

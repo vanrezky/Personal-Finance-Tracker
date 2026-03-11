@@ -5,7 +5,10 @@ import { ArrowDownRight, ArrowUpRight, Wallet } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export function Dashboard() {
-  const transactions = useLiveQuery(() => db.transactions.toArray(), []);
+  const transactions = useLiveQuery(
+    () => db.transactions.where('syncAction').notEqual('delete').toArray(),
+    []
+  );
 
   const { income, expense, balance } = (transactions || []).reduce(
     (acc, curr) => {

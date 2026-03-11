@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import { db } from '../db';
+import { useState, useEffect } from 'react';
+import { db, Transaction } from '../db';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Check } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface TransactionFormProps {
   onClose: () => void;
+  editData?: Transaction | null;
 }
 
 const EXPENSE_CATEGORIES = [
@@ -18,12 +19,12 @@ const INCOME_CATEGORIES = [
   'Gaji', 'Bonus', 'Hasil Usaha', 'Investasi', 'Pemberian', 'Lainnya'
 ];
 
-export function TransactionForm({ onClose }: TransactionFormProps) {
-  const [type, setType] = useState<'income' | 'expense'>('expense');
-  const [amountStr, setAmountStr] = useState('');
-  const [category, setCategory] = useState('');
-  const [note, setNote] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+export function TransactionForm({ onClose, editData }: TransactionFormProps) {
+  const [type, setType] = useState<'income' | 'expense'>(editData?.type || 'expense');
+  const [amountStr, setAmountStr] = useState(editData ? new Intl.NumberFormat('id-ID').format(editData.amount) : '');
+  const [category, setCategory] = useState(editData?.category || '');
+  const [note, setNote] = useState(editData?.note || '');
+  const [date, setDate] = useState(editData ? new Date(editData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
 
   const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
@@ -55,17 +56,31 @@ export function TransactionForm({ onClose }: TransactionFormProps) {
     if (!numericAmount || isNaN(numericAmount) || !category) return;
 
     try {
-      await db.transactions.add({
-        type,
-        amount: numericAmount,
-        category,
-        note,
-        date: new Date(date).toISOString(),
-        synced: 0,
-      });
+      if (editData && editData.id) {
+        await db.transactions.update(editData.id, {
+          type,
+          amount: numericAmount,
+          category,
+          note,
+          date: new Date(date).toISOString(),
+          synced: 0,
+          syncAction: editData.synced === 1 ? 'update' : editData.syncAction || 'create'
+        });
+      } else {
+        await db.transactions.add({
+          syncId: crypto.randomUUID(),
+          type,
+          amount: numericAmount,
+          category,
+          note,
+          date: new Date(date).toISOString(),
+          synced: 0,
+          syncAction: 'create'
+        });
+      }
       onClose();
     } catch (error) {
-      console.error('Failed to add transaction:', error);
+      console.error('Failed to save transaction:', error);
     }
   };
 
@@ -85,7 +100,7 @@ export function TransactionForm({ onClose }: TransactionFormProps) {
           className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
         >
           <div className="flex items-center justify-between p-6 border-b border-slate-100">
-            <h2 className="text-xl font-semibold text-slate-800">New Transaction</h2>
+            <h2 className="text-xl font-semibold text-slate-800">{editData ? 'Edit Transaction' : 'New Transaction'}</h2>
             <button
               onClick={onClose}
               className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors"

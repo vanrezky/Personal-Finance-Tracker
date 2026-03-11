@@ -45,7 +45,10 @@ export function SyncIndicator({ onError }: { onError?: (title: string, message: 
       if (unsynced.length === 0) return;
 
       // Prepare payload (remove local id and synced status)
-      const payload = unsynced.map(({ id, synced, ...rest }) => rest);
+      const payload = unsynced.map(({ id, synced, ...rest }) => ({
+        ...rest,
+        action: rest.syncAction || 'create'
+      }));
 
       // Send to Google Apps Script Web App
       const response = await fetch(token, {
@@ -68,7 +71,11 @@ export function SyncIndicator({ onError }: { onError?: (title: string, message: 
         await db.transaction('rw', db.transactions, async () => {
           for (const item of unsynced) {
             if (item.id) {
-              await db.transactions.update(item.id, { synced: 1 });
+              if (item.syncAction === 'delete') {
+                await db.transactions.delete(item.id);
+              } else {
+                await db.transactions.update(item.id, { synced: 1, syncAction: null });
+              }
             }
           }
         });

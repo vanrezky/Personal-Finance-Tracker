@@ -1,13 +1,17 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
+import { db, Transaction } from '../db';
 import { formatCurrency, cn } from '../lib/utils';
 import { format, parseISO } from 'date-fns';
-import { ArrowDownRight, ArrowUpRight, Calendar, Tag } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Calendar, Tag, Pencil, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 
-export function TransactionList() {
+interface TransactionListProps {
+  onEdit?: (tx: Transaction) => void;
+}
+
+export function TransactionList({ onEdit }: TransactionListProps) {
   const transactions = useLiveQuery(
-    () => db.transactions.orderBy('date').reverse().toArray(),
+    () => db.transactions.where('syncAction').notEqual('delete').reverse().sortBy('date'),
     []
   );
 
@@ -30,6 +34,23 @@ export function TransactionList() {
       </div>
     );
   }
+
+  const handleDelete = async (tx: Transaction) => {
+    if (!window.confirm('Are you sure you want to delete this transaction?')) return;
+    
+    if (tx.id) {
+      if (tx.synced === 1) {
+        // If it was synced, mark it for deletion on the server
+        await db.transactions.update(tx.id, {
+          synced: 0,
+          syncAction: 'delete'
+        });
+      } else {
+        // If it was never synced, just delete it locally
+        await db.transactions.delete(tx.id);
+      }
+    }
+  };
 
   // Group by date
   const grouped = transactions.reduce((acc, curr) => {
@@ -74,7 +95,7 @@ export function TransactionList() {
                       <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5" />
                     )}
                   </div>
-                  <div className="flex flex-col justify-center min-w-0">
+                  <div className="flex flex-col justify-center min-w-0 flex-1">
                     <p className="text-sm sm:text-base font-medium text-slate-900 leading-tight truncate">{item.category}</p>
                     {item.note && (
                       <p className="text-[10px] sm:text-xs text-slate-500 flex items-center gap-1 mt-1 truncate">
@@ -84,11 +105,27 @@ export function TransactionList() {
                     )}
                   </div>
                 </div>
-                <div className={cn(
-                  "text-sm sm:text-base font-semibold",
-                  item.type === 'income' ? "text-emerald-600" : "text-slate-900"
-                )}>
-                  {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)}
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  <div className={cn(
+                    "text-sm sm:text-base font-semibold",
+                    item.type === 'income' ? "text-emerald-600" : "text-slate-900"
+                  )}>
+                    {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => onEdit?.(item)}
+                      className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                    >
+                      <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(item)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
