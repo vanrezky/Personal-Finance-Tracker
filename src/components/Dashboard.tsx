@@ -1,14 +1,30 @@
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
+import { useState, useEffect } from 'react';
+import { db, collection, onSnapshot, query } from '../firebase';
 import { formatCurrency } from '../lib/utils';
 import { ArrowDownRight, ArrowUpRight, Wallet } from 'lucide-react';
 import { motion } from 'motion/react';
+import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
-export function Dashboard() {
-  const transactions = useLiveQuery(
-    () => db.transactions.where('syncAction').notEqual('delete').toArray(),
-    []
-  );
+export function Dashboard({ householdId }: { householdId: string }) {
+  const [transactions, setTransactions] = useState<any[] | null>(null);
+
+  useEffect(() => {
+    const path = `households/${householdId}/transactions`;
+    const q = query(collection(db, path));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setTransactions(data);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, path);
+      setTransactions([]);
+    });
+
+    return () => unsubscribe();
+  }, [householdId]);
 
   const { income, expense, balance } = (transactions || []).reduce(
     (acc, curr) => {

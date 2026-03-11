@@ -1,25 +1,24 @@
 import { useState, useEffect } from 'react';
-import { SyncIndicator } from './components/SyncIndicator';
 import { Dashboard } from './components/Dashboard';
 import { TransactionList } from './components/TransactionList';
 import { TransactionForm } from './components/TransactionForm';
-import { TokenSetup } from './components/TokenSetup';
-import { db, Transaction } from './db';
-import { Plus, Activity, ListOrdered, LogOut, Download, CloudDownload, Loader2 } from 'lucide-react';
+import { AuthSetup } from './components/AuthSetup';
+import { auth, db, logout, onSnapshot, collection, query, orderBy, setDoc, doc, getDoc } from './firebase';
+import { Plus, Activity, ListOrdered, LogOut, Download, CloudOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
+import { handleFirestoreError, OperationType } from './lib/firestore-errors';
 
 export default function App() {
-  const [token, setToken] = useState<string | null>(null);
+  const [householdId, setHouseholdId] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editData, setEditData] = useState<Transaction | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'history'>('dashboard');
   const [isLoaded, setIsLoaded] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [isPulling, setIsPulling] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [alertMessage, setAlertMessage] = useState<{title: string, message: string} | null>(null);
-  const [confirmPull, setConfirmPull] = useState<{count: number} | null>(null);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
@@ -27,107 +26,85 @@ export default function App() {
       setDeferredPrompt(e);
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, []);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('spreadsheet_token');
-    if (savedToken) {
-      setToken(savedToken);
-    }
-    setIsLoaded(true);
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        // Fetch user's household
+        const path = `users/${user.uid}`;
+        try {
+          const userDoc = await getDoc(doc(db, path));
+          if (userDoc.exists() && userDoc.data().currentHouseholdId) {
+            setHouseholdId(userDoc.data().currentHouseholdId);
+          }
+        } catch (err) {
+          handleFirestoreError(err, OperationType.GET, path);
+        }
+      } else {
+        setHouseholdId(null);
+      }
+      setIsLoaded(true);
+    });
+    return () => unsubscribe();
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('spreadsheet_token');
-    setToken(null);
+  const handleLogout = async () => {
+    await logout();
+    setHouseholdId(null);
     setShowLogoutConfirm(false);
   };
 
-  const executePull = async () => {
-    setIsPulling(true);
-    try {
-      const response = await fetch(token!, {
-        method: 'GET',
-        redirect: 'follow'
-      });
-      
-      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-      
-      const result = await response.json();
-      if (result.status === 'success' && Array.isArray(result.data)) {
-        await db.transaction('rw', db.transactions, async () => {
-          await db.transactions.clear();
-          
-          const newTransactions = result.data.map((item: any) => {
-            let isoDate = item.date;
-            try {
-              const d = new Date(item.date);
-              if (!isNaN(d.getTime())) {
-                isoDate = d.toISOString();
-              }
-            } catch (e) {}
+  useEffect(() => {
+    if (!householdId) return;
 
-            return {
-              syncId: item.syncId || crypto.randomUUID(),
-              date: isoDate,
-              type: item.type,
-              category: item.category,
-              amount: Number(item.amount),
-              note: item.note || '',
-              synced: 1,
-              syncAction: null
-            };
-          });
-          
-          if (newTransactions.length > 0) {
-            await db.transactions.bulkAdd(newTransactions);
-          }
-        });
-        setAlertMessage({
-          title: 'Berhasil',
-          message: `Berhasil menarik ${result.data.length} transaksi dari Spreadsheet!`
-        });
-      } else {
-        throw new Error(result.message || 'Gagal mengambil data dari Spreadsheet');
-      }
-    } catch (error: any) {
-      console.error('Pull failed:', error);
-      const isNetworkError = error?.message?.includes('Failed to fetch') || error?.message?.includes('NetworkError');
-      const errorMessage = isNetworkError 
-        ? 'Gagal terhubung ke server. Pastikan Anda memilih "Siapa saja (Anyone)" pada bagian "Siapa yang memiliki akses" saat melakukan Deploy di Apps Script.'
-        : error?.message || 'Periksa kembali URL Token atau pengaturan Apps Script Anda.';
+    const path = `households/${householdId}/transactions`;
+    const q = query(
+      collection(db, path),
+      orderBy('createdAt', 'desc')
+    );
 
-      setAlertMessage({
-        title: 'Gagal Menarik Data',
-        message: `${errorMessage}\n\nPastikan Anda sudah menambahkan fungsi doGet() di Apps Script dan melakukan "New Deployment".`
-      });
-    } finally {
-      setIsPulling(false);
-    }
-  };
+    let isInitialLoad = true;
 
-  const handlePullData = async () => {
-    if (!token) return;
-
-    try {
-      const unsyncedCount = await db.transactions.where('synced').equals(0).count();
-      if (unsyncedCount > 0) {
-        setConfirmPull({ count: unsyncedCount });
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (isInitialLoad) {
+        isInitialLoad = false;
         return;
       }
 
-      executePull();
-    } catch (error) {
-      console.error('Failed to check unsynced transactions:', error);
-      executePull(); // Fallback to pull anyway if count fails
-    }
-  };
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const data = change.doc.data();
+          if (auth.currentUser && data.authorUid !== auth.currentUser.uid) {
+            setAlertMessage({
+              title: 'Transaksi Baru',
+              message: `${data.authorName} baru saja menambahkan transaksi ${data.type === 'income' ? 'pemasukan' : 'pengeluaran'} sebesar Rp ${new Intl.NumberFormat('id-ID').format(data.amount)} untuk ${data.category}.`
+            });
+          }
+        }
+      });
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, path);
+    });
+
+    return () => unsubscribe();
+  }, [householdId]);
 
   if (!isLoaded) return null;
 
-  if (!token) {
-    return <TokenSetup onComplete={setToken} />;
+  if (!householdId) {
+    return <AuthSetup onComplete={setHouseholdId} />;
   }
 
   return (
@@ -157,19 +134,18 @@ export default function App() {
               <span className="text-xs font-semibold hidden sm:inline">Install</span>
             </button>
           )}
-          <button
-            onClick={handlePullData}
-            disabled={isPulling}
-            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors disabled:opacity-50"
-            title="Tarik Data dari Spreadsheet"
-          >
-            {isPulling ? <Loader2 className="w-4 h-4 animate-spin" /> : <CloudDownload className="w-4 h-4" />}
-          </button>
-          <SyncIndicator onError={(title, message) => setAlertMessage({ title, message })} />
+          
+          {!isOnline && (
+            <div className="flex items-center gap-1.5 text-rose-500 bg-rose-50 px-2.5 py-1 rounded-full text-xs font-medium">
+              <CloudOff className="w-3.5 h-3.5" />
+              <span>Offline</span>
+            </div>
+          )}
+
           <button 
             onClick={() => setShowLogoutConfirm(true)}
             className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors"
-            title="Ganti Token"
+            title="Keluar"
           >
             <LogOut className="w-4 h-4" />
           </button>
@@ -187,7 +163,7 @@ export default function App() {
               exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.2 }}
             >
-              <Dashboard />
+              <Dashboard householdId={householdId} />
             </motion.div>
           ) : (
             <motion.div
@@ -198,10 +174,11 @@ export default function App() {
               transition={{ duration: 0.2 }}
             >
               <TransactionList 
-                onEdit={(tx) => {
-                  setEditData(tx);
+                householdId={householdId} 
+                onEdit={(transaction) => {
+                  setEditingTransaction(transaction);
                   setIsFormOpen(true);
-                }}
+                }} 
               />
             </motion.div>
           )}
@@ -238,7 +215,10 @@ export default function App() {
 
           {/* Floating Action Button */}
           <button
-            onClick={() => setIsFormOpen(true)}
+            onClick={() => {
+              setEditingTransaction(null);
+              setIsFormOpen(true);
+            }}
             className="absolute left-1/2 -top-6 -translate-x-1/2 bg-slate-900 text-white p-4 rounded-full shadow-xl shadow-slate-900/20 hover:scale-105 active:scale-95 transition-all"
           >
             <Plus className="w-8 h-8" />
@@ -249,11 +229,12 @@ export default function App() {
       {/* Transaction Form Modal */}
       {isFormOpen && (
         <TransactionForm 
+          householdId={householdId} 
           onClose={() => {
             setIsFormOpen(false);
-            setEditData(null);
+            setEditingTransaction(null);
           }} 
-          editData={editData}
+          initialData={editingTransaction}
         />
       )}
 
@@ -272,9 +253,9 @@ export default function App() {
               exit={{ scale: 0.95, opacity: 0 }}
               className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl"
             >
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Hapus Token?</h3>
+              <h3 className="text-lg font-bold text-slate-900 mb-2">Keluar Akun?</h3>
               <p className="text-slate-500 text-sm mb-6">
-                Anda akan memutus koneksi dengan Google Spreadsheet saat ini. Data transaksi di HP Anda tidak akan terhapus.
+                Anda akan keluar dari aplikasi. Data Anda tetap aman di cloud.
               </p>
               <div className="flex gap-3">
                 <button
@@ -287,46 +268,7 @@ export default function App() {
                   onClick={handleLogout}
                   className="flex-1 py-3 px-4 bg-rose-600 text-white font-medium rounded-xl hover:bg-rose-700 transition-colors"
                 >
-                  Ya, Hapus
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-
-        {/* Pull Confirmation Modal */}
-        {confirmPull && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl"
-            >
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Peringatan Sinkronisasi</h3>
-              <p className="text-slate-500 text-sm mb-6">
-                Anda memiliki <strong>{confirmPull.count} transaksi</strong> yang belum tersinkronisasi. Menarik data sekarang akan <strong>MENGHAPUS</strong> transaksi tersebut. Lanjutkan?
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setConfirmPull(null)}
-                  className="flex-1 py-3 px-4 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  onClick={() => {
-                    setConfirmPull(null);
-                    executePull();
-                  }}
-                  className="flex-1 py-3 px-4 bg-rose-600 text-white font-medium rounded-xl hover:bg-rose-700 transition-colors"
-                >
-                  Ya, Tarik Data
+                  Ya, Keluar
                 </button>
               </div>
             </motion.div>

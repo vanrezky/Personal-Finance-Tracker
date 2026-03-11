@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { db, Transaction } from '../db';
+import { db, collection, addDoc, updateDoc, doc, auth } from '../firebase';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Check } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
 interface TransactionFormProps {
+  householdId: string;
   onClose: () => void;
-  editData?: Transaction | null;
+  initialData?: any;
 }
 
 const EXPENSE_CATEGORIES = [
@@ -19,12 +21,12 @@ const INCOME_CATEGORIES = [
   'Gaji', 'Bonus', 'Hasil Usaha', 'Investasi', 'Pemberian', 'Lainnya'
 ];
 
-export function TransactionForm({ onClose, editData }: TransactionFormProps) {
-  const [type, setType] = useState<'income' | 'expense'>(editData?.type || 'expense');
-  const [amountStr, setAmountStr] = useState(editData ? new Intl.NumberFormat('id-ID').format(editData.amount) : '');
-  const [category, setCategory] = useState(editData?.category || '');
-  const [note, setNote] = useState(editData?.note || '');
-  const [date, setDate] = useState(editData ? new Date(editData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+export function TransactionForm({ householdId, onClose, initialData }: TransactionFormProps) {
+  const [type, setType] = useState<'income' | 'expense'>(initialData?.type || 'expense');
+  const [amountStr, setAmountStr] = useState(initialData?.amount ? new Intl.NumberFormat('id-ID').format(initialData.amount) : '');
+  const [category, setCategory] = useState(initialData?.category || '');
+  const [note, setNote] = useState(initialData?.note || '');
+  const [date, setDate] = useState(initialData?.date ? initialData.date.split('T')[0] : new Date().toISOString().split('T')[0]);
 
   const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
@@ -53,30 +55,39 @@ export function TransactionForm({ onClose, editData }: TransactionFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const numericAmount = parseInt(amountStr.replace(/\D/g, ''), 10);
-    if (!numericAmount || isNaN(numericAmount) || !category) return;
+    if (!numericAmount || isNaN(numericAmount) || !category || !auth.currentUser) return;
 
     try {
-      if (editData && editData.id) {
-        await db.transactions.update(editData.id, {
-          type,
-          amount: numericAmount,
-          category,
-          note,
-          date: new Date(date).toISOString(),
-          synced: 0,
-          syncAction: editData.synced === 1 ? 'update' : editData.syncAction || 'create'
-        });
+      if (initialData?.id) {
+        const path = `households/${householdId}/transactions/${initialData.id}`;
+        try {
+          await updateDoc(doc(db, path), {
+            type,
+            amount: numericAmount,
+            category,
+            note,
+            date: new Date(date).toISOString(),
+          });
+        } catch (err) {
+          handleFirestoreError(err, OperationType.UPDATE, path);
+        }
       } else {
-        await db.transactions.add({
-          syncId: crypto.randomUUID(),
-          type,
-          amount: numericAmount,
-          category,
-          note,
-          date: new Date(date).toISOString(),
-          synced: 0,
-          syncAction: 'create'
-        });
+        const path = `households/${householdId}/transactions`;
+        try {
+          await addDoc(collection(db, path), {
+            householdId,
+            type,
+            amount: numericAmount,
+            category,
+            note,
+            date: new Date(date).toISOString(),
+            createdAt: new Date().toISOString(),
+            authorUid: auth.currentUser.uid,
+            authorName: auth.currentUser.displayName || auth.currentUser.email || 'Unknown',
+          });
+        } catch (err) {
+          handleFirestoreError(err, OperationType.CREATE, path);
+        }
       }
       onClose();
     } catch (error) {
@@ -100,7 +111,7 @@ export function TransactionForm({ onClose, editData }: TransactionFormProps) {
           className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
         >
           <div className="flex items-center justify-between p-6 border-b border-slate-100">
-            <h2 className="text-xl font-semibold text-slate-800">{editData ? 'Edit Transaction' : 'New Transaction'}</h2>
+            <h2 className="text-xl font-semibold text-slate-800">{initialData ? 'Edit Transaction' : 'New Transaction'}</h2>
             <button
               onClick={onClose}
               className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors"

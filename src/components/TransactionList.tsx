@@ -1,19 +1,46 @@
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db, Transaction } from '../db';
+import { useState, useEffect } from 'react';
+import { db, collection, query, orderBy, onSnapshot, doc, deleteDoc } from '../firebase';
 import { formatCurrency, cn } from '../lib/utils';
 import { format, parseISO } from 'date-fns';
-import { ArrowDownRight, ArrowUpRight, Calendar, Tag, Pencil, Trash2 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { ArrowDownRight, ArrowUpRight, Calendar, Tag, Trash2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
-interface TransactionListProps {
-  onEdit?: (tx: Transaction) => void;
-}
+export function TransactionList({ householdId, onEdit }: { householdId: string, onEdit: (transaction: any) => void }) {
+  const [transactions, setTransactions] = useState<any[] | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-export function TransactionList({ onEdit }: TransactionListProps) {
-  const transactions = useLiveQuery(
-    () => db.transactions.where('syncAction').notEqual('delete').reverse().sortBy('date'),
-    []
-  );
+  useEffect(() => {
+    const path = `households/${householdId}/transactions`;
+    const q = query(
+      collection(db, path),
+      orderBy('date', 'desc')
+    );
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setTransactions(data);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, path);
+      setTransactions([]);
+    });
+
+    return () => unsubscribe();
+  }, [householdId]);
+
+  const handleDelete = async () => {
+    if (!deletingId) return;
+    const path = `households/${householdId}/transactions/${deletingId}`;
+    try {
+      await deleteDoc(doc(db, path));
+      setDeletingId(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
+    }
+  };
 
   if (!transactions) {
     return (
@@ -35,34 +62,17 @@ export function TransactionList({ onEdit }: TransactionListProps) {
     );
   }
 
-  const handleDelete = async (tx: Transaction) => {
-    if (!window.confirm('Are you sure you want to delete this transaction?')) return;
-    
-    if (tx.id) {
-      if (tx.synced === 1) {
-        // If it was synced, mark it for deletion on the server
-        await db.transactions.update(tx.id, {
-          synced: 0,
-          syncAction: 'delete'
-        });
-      } else {
-        // If it was never synced, just delete it locally
-        await db.transactions.delete(tx.id);
-      }
-    }
-  };
-
   // Group by date
   const grouped = transactions.reduce((acc, curr) => {
     const dateStr = format(parseISO(curr.date), 'MMM dd, yyyy');
     if (!acc[dateStr]) acc[dateStr] = [];
     acc[dateStr].push(curr);
     return acc;
-  }, {} as Record<string, typeof transactions>);
+  }, {} as Record<string, any[]>);
 
   return (
     <div className="space-y-6 pb-24">
-      {Object.entries(grouped).map(([date, items], groupIndex) => (
+      {(Object.entries(grouped) as [string, any[]][]).map(([date, items], groupIndex) => (
         <motion.div
           key={date}
           initial={{ opacity: 0, y: 20 }}
@@ -95,7 +105,7 @@ export function TransactionList({ onEdit }: TransactionListProps) {
                       <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5" />
                     )}
                   </div>
-                  <div className="flex flex-col justify-center min-w-0 flex-1">
+                  <div className="flex flex-col justify-center min-w-0">
                     <p className="text-sm sm:text-base font-medium text-slate-900 leading-tight truncate">{item.category}</p>
                     {item.note && (
                       <p className="text-[10px] sm:text-xs text-slate-500 flex items-center gap-1 mt-1 truncate">
@@ -105,33 +115,69 @@ export function TransactionList({ onEdit }: TransactionListProps) {
                     )}
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-2 shrink-0">
+                <div className="flex items-center gap-4">
                   <div className={cn(
                     "text-sm sm:text-base font-semibold",
                     item.type === 'income' ? "text-emerald-600" : "text-slate-900"
                   )}>
                     {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => onEdit?.(item)}
-                      className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                    >
-                      <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(item)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => onEdit(item)}
+                    className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-full transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                  </button>
+                  <button
+                    onClick={() => setDeletingId(item.id)}
+                    className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         </motion.div>
       ))}
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deletingId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl"
+            >
+              <h3 className="text-lg font-bold text-slate-900 mb-2">Hapus Transaksi?</h3>
+              <p className="text-slate-500 text-sm mb-6">
+                Transaksi ini akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeletingId(null)}
+                  className="flex-1 py-3 px-4 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="flex-1 py-3 px-4 bg-rose-600 text-white font-medium rounded-xl hover:bg-rose-700 transition-colors"
+                >
+                  Ya, Hapus
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

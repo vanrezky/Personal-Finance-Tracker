@@ -1,0 +1,127 @@
+{
+  "entities": {
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A financial transaction (income or expense)",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the transaction"
+        },
+        "householdId": {
+          "type": "string",
+          "description": "The ID of the household this transaction belongs to"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["income", "expense"],
+          "description": "Type of transaction"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Amount of the transaction"
+        },
+        "category": {
+          "type": "string",
+          "description": "Category of the transaction"
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional note for the transaction"
+        },
+        "date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Date of the transaction in ISO format"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the transaction was created"
+        },
+        "authorUid": {
+          "type": "string",
+          "description": "UID of the user who created the transaction"
+        },
+        "authorName": {
+          "type": "string",
+          "description": "Name of the user who created the transaction"
+        }
+      },
+      "required": ["householdId", "type", "amount", "category", "date", "createdAt", "authorUid"]
+    },
+    "Household": {
+      "title": "Household",
+      "description": "A shared household for multiple users to sync transactions",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the household"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the household"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of user UIDs who are members of this household"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the household was created"
+        }
+      },
+      "required": ["name", "members", "createdAt"]
+    },
+    "User": {
+      "title": "User",
+      "description": "A user profile",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "User's UID"
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User's display name"
+        },
+        "currentHouseholdId": {
+          "type": "string",
+          "description": "The ID of the household the user is currently viewing/syncing"
+        }
+      },
+      "required": ["uid", "email"]
+    }
+  },
+  "firestore": {
+    "households/{householdId}": {
+      "schema": {
+        "$ref": "#/entities/Household"
+      },
+      "description": "Stores household data"
+    },
+    "households/{householdId}/transactions/{transactionId}": {
+      "schema": {
+        "$ref": "#/entities/Transaction"
+      },
+      "description": "Stores transactions for a specific household"
+    },
+    "users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "Stores user profiles and their current household"
+    }
+  }
+}
