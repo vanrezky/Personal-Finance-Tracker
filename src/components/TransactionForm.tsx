@@ -61,7 +61,7 @@ export function TransactionForm({ onClose }: TransactionFormProps) {
         category,
         note,
         date: new Date(date).toISOString(),
-        synced: false,
+        synced: 0,
       });
       onClose();
     } catch (error) {

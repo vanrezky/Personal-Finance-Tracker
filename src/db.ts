@@ -7,7 +7,7 @@ export interface Transaction {
   category: string;
   note: string;
   date: string; // ISO string
-  synced: boolean;
+  synced: number; // 0 for false, 1 for true
 }
 
 export class FinanceDatabase extends Dexie {

@@ -4,7 +4,7 @@ import { db } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'motion/react';
 
-export function SyncIndicator() {
+export function SyncIndicator({ onError }: { onError?: (title: string, message: string) => void }) {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -68,7 +68,7 @@ export function SyncIndicator() {
         await db.transaction('rw', db.transactions, async () => {
           for (const item of unsynced) {
             if (item.id) {
-              await db.transactions.update(item.id, { synced: true });
+              await db.transactions.update(item.id, { synced: 1 });
             }
           }
         });
@@ -78,8 +78,15 @@ export function SyncIndicator() {
       }
     } catch (error: any) {
       console.error('Sync failed:', error);
-      setSyncError(error.message || 'Gagal terhubung ke Spreadsheet');
-      alert(`Gagal Sinkronisasi:\n\n${error.message || 'Periksa kembali URL Token atau pengaturan Apps Script Anda.'}\n\nPastikan Anda sudah melakukan "New Deployment" di Apps Script.`);
+      const isNetworkError = error?.message?.includes('Failed to fetch') || error?.message?.includes('NetworkError');
+      const errorMessage = isNetworkError 
+        ? 'Gagal terhubung ke server. Pastikan Anda memilih "Siapa saja (Anyone)" pada bagian "Siapa yang memiliki akses" saat melakukan Deploy di Apps Script.'
+        : error?.message || 'Periksa kembali URL Token atau pengaturan Apps Script Anda.';
+      
+      setSyncError(isNetworkError ? 'CORS/Network Error' : (error?.message || 'Gagal terhubung ke Spreadsheet'));
+      if (onError) {
+        onError('Gagal Sinkronisasi', `${errorMessage}\n\nPastikan Anda sudah melakukan "New Deployment" di Apps Script.`);
+      }
     } finally {
       setIsSyncing(false);
     }

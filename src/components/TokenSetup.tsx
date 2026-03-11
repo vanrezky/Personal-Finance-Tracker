@@ -30,6 +30,35 @@ const APPS_SCRIPT_CODE = `function doPost(e) {
     return ContentService.createTextOutput(JSON.stringify({"status": "error", "message": error.message}))
       .setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+function doGet(e) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var data = sheet.getDataRange().getValues();
+    
+    if (data.length <= 1) {
+      return ContentService.createTextOutput(JSON.stringify({"status": "success", "data": []}))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var rows = data.slice(1);
+    var result = rows.map(function(row) {
+      return {
+        date: row[0],
+        type: row[1],
+        category: row[2],
+        amount: row[3],
+        note: row[4]
+      };
+    });
+    
+    return ContentService.createTextOutput(JSON.stringify({"status": "success", "data": result}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch(error) {
+    return ContentService.createTextOutput(JSON.stringify({"status": "error", "message": error.message}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }`;
 
 export function TokenSetup({ onComplete }: TokenSetupProps) {
@@ -143,7 +172,7 @@ export function TokenSetup({ onComplete }: TokenSetupProps) {
                     <h3 className="font-semibold text-slate-900 flex items-center gap-2 mb-2 text-sm sm:text-base">
                       <Code className="w-4 h-4 text-emerald-600 shrink-0" /> Masukkan Kode Script
                     </h3>
-                    <p className="text-xs sm:text-sm text-slate-600 mb-3">Di menu Spreadsheet, klik <strong>Ekstensi &gt; Apps Script</strong>. Hapus semua kode yang ada, lalu paste kode di bawah ini:</p>
+                    <p className="text-xs sm:text-sm text-slate-600 mb-3">Di menu Spreadsheet, klik <strong>Ekstensi &gt; Apps Script</strong>. Hapus semua kode yang ada, lalu paste kode di bawah ini: <br/><span className="text-emerald-600 font-medium">*Jika Anda pernah setup sebelumnya, hapus kode lama dan ganti dengan yang baru ini agar fitur Tarik Data berfungsi.</span></p>
                     
                     <div className="relative group">
                       <div className="absolute right-2 top-2">
