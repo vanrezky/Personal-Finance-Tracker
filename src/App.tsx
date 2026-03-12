@@ -126,7 +126,7 @@ export default function App() {
       case 'reports':
         return <Reports householdId={householdId} />;
       case 'settings':
-        return <Settings householdId={householdId} />;
+        return <Settings householdId={householdId} onLogout={() => setShowLogoutConfirm(true)} />;
       default:
         return <Dashboard householdId={householdId} />;
     }
@@ -156,7 +156,7 @@ export default function App() {
               title="Install App"
             >
               <Download className="w-4 h-4" />
-              <span className="text-xs font-semibold hidden sm:inline">Install</span>
+              <span className="text-xs font-semibold">Install</span>
             </button>
           )}
           
@@ -166,14 +166,6 @@ export default function App() {
               <span>Offline</span>
             </div>
           )}
-
-          <button 
-            onClick={() => setShowLogoutConfirm(true)}
-            className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors"
-            title="Keluar"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
         </div>
       </header>
 

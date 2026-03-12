@@ -154,23 +154,36 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
       return;
     }
 
+    // Reset state before starting
+    setIsListening(true);
+
     const recognition = new SpeechRecognition();
     recognition.lang = 'id-ID';
     recognition.continuous = false;
     recognition.interimResults = false;
 
-    recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
+    recognition.onstart = () => {
+      // Already set to true, but good to confirm
+      setIsListening(true);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error', event.error);
+      setIsListening(false);
+      
       if (event.error === 'not-allowed') {
         alert('Izin mikrofon ditolak. Pastikan Anda memberikan izin akses mikrofon di browser atau buka aplikasi di tab baru jika masih bermasalah.');
       } else if (event.error === 'network') {
-        alert('Gagal terhubung ke layanan pengenal suara (Network Error). Pastikan koneksi internet Anda stabil. Jika Anda menggunakan Chrome, fitur ini memerlukan akses ke server Google.');
+        alert('Gagal terhubung ke layanan pengenal suara (Network Error). \n\nHal ini biasanya terjadi karena:\n1. Koneksi internet tidak stabil.\n2. Layanan pengenalan suara Google sedang sibuk atau diblokir oleh jaringan Anda.\n\nSilakan coba lagi dalam beberapa saat atau gunakan input manual.');
+      } else if (event.error === 'no-speech') {
+        // Silent fail for no speech detected
       } else {
         alert(`Terjadi kesalahan pada Voice Input: ${event.error}`);
       }
-      setIsListening(false);
     };
 
     recognition.onresult = (event: any) => {
@@ -178,7 +191,12 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
       processVoiceInput(transcript);
     };
 
-    recognition.start();
+    try {
+      recognition.start();
+    } catch (e) {
+      console.error('Failed to start recognition', e);
+      setIsListening(false);
+    }
   };
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -268,8 +286,9 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
                 <button
                   type="button"
                   onClick={startListening}
+                  disabled={isListening}
                   className={cn(
-                    "p-2 rounded-full transition-all relative",
+                    "p-2 rounded-full transition-all relative disabled:opacity-100",
                     isListening ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                   )}
                 >

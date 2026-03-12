@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { auth, db, doc, setDoc, getDoc } from '../firebase';
 import { motion } from 'motion/react';
-import { User, Calendar, Save, CheckCircle2, Copy, Users } from 'lucide-react';
+import { User, Calendar, Save, CheckCircle2, Copy, Users, LogOut } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
-export function Settings({ householdId }: { householdId: string }) {
+export function Settings({ householdId, onLogout }: { householdId: string, onLogout: () => void }) {
   const [displayName, setDisplayName] = useState('');
   const [payday, setPayday] = useState('25');
   const [loading, setLoading] = useState(true);
@@ -158,6 +158,18 @@ export function Settings({ householdId }: { householdId: string }) {
             {copied ? <CheckCircle2 className="w-6 h-6 text-emerald-500" /> : <Copy className="w-6 h-6" />}
           </button>
         </div>
+      </div>
+      <div className="pt-4">
+        <button
+          onClick={onLogout}
+          className="w-full py-4 px-6 bg-rose-50 text-rose-600 rounded-3xl font-bold hover:bg-rose-100 transition-colors flex items-center justify-center gap-2 border border-rose-100"
+        >
+          <LogOut className="w-5 h-5" />
+          Keluar dari Akun
+        </button>
+        <p className="text-center text-[10px] text-slate-400 mt-4">
+          Finance Sync v1.0.0
+        </p>
       </div>
     </div>
   );
