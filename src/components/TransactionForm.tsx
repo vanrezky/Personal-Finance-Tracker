@@ -221,11 +221,14 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
     setAmountStr(new Intl.NumberFormat('id-ID').format(parseInt(rawValue, 10)));
   };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const numericAmount = parseInt(amountStr.replace(/\D/g, ''), 10);
-    if (!numericAmount || isNaN(numericAmount) || !category || !auth.currentUser) return;
+    if (!numericAmount || isNaN(numericAmount) || !category || !auth.currentUser || isSubmitting) return;
 
+    setIsSubmitting(true);
     try {
       if (initialData?.id) {
         const path = `households/${householdId}/transactions/${initialData.id}`;
@@ -261,6 +264,8 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
       onClose();
     } catch (error) {
       console.error('Failed to save transaction:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -426,10 +431,17 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
 
             <button
               type="submit"
-              className="w-full py-4 bg-slate-900 text-white rounded-2xl font-semibold text-lg hover:bg-slate-800 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              disabled={isSubmitting}
+              className="w-full py-4 bg-slate-900 text-white rounded-2xl font-semibold text-lg hover:bg-slate-800 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              <Check className="w-5 h-5" />
-              Simpan Transaksi
+              {isSubmitting ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  <Check className="w-5 h-5" />
+                  Simpan Transaksi
+                </>
+              )}
             </button>
           </form>
         </motion.div>

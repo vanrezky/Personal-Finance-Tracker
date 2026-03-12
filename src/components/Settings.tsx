@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { User, Calendar, Save, CheckCircle2, Copy, Users, LogOut } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { cn } from '../lib/utils';
+import { Skeleton } from './Skeleton';
 
 export function Settings({ householdId, onLogout }: { householdId: string, onLogout: () => void }) {
   const [displayName, setDisplayName] = useState('');
@@ -79,8 +80,20 @@ export function Settings({ householdId, onLogout }: { householdId: string, onLog
 
   if (loading) {
     return (
-      <div className="flex justify-center p-12">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
+      <div className="space-y-6">
+        <div className="bg-white p-6 rounded-3xl border border-slate-100 space-y-6">
+          <Skeleton className="h-7 w-32" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-12 w-full rounded-2xl" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-12 w-full rounded-2xl" />
+          </div>
+          <Skeleton className="h-14 w-full rounded-2xl" />
+        </div>
+        <Skeleton className="h-40 w-full rounded-3xl" />
       </div>
     );
   }

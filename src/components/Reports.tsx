@@ -6,6 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Calendar, Download, TrendingUp, TrendingDown, PieChart as PieChartIcon, BarChart3 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { Skeleton } from './Skeleton';
 
 export function Reports({ householdId }: { householdId: string }) {
   const [startDate, setStartDate] = useState(format(subMonths(new Date(), 1), 'yyyy-MM-dd'));
@@ -80,8 +81,14 @@ export function Reports({ householdId }: { householdId: string }) {
 
   if (loading) {
     return (
-      <div className="flex justify-center p-12">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
+      <div className="space-y-8">
+        <Skeleton className="h-40 w-full rounded-3xl" />
+        <div className="grid grid-cols-2 gap-4">
+          <Skeleton className="h-24 w-full rounded-3xl" />
+          <Skeleton className="h-24 w-full rounded-3xl" />
+        </div>
+        <Skeleton className="h-64 w-full rounded-3xl" />
+        <Skeleton className="h-80 w-full rounded-3xl" />
       </div>
     );
   }

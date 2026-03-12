@@ -5,6 +5,7 @@ import { format, parseISO } from 'date-fns';
 import { ArrowDownRight, ArrowUpRight, Calendar, Tag, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { Skeleton } from './Skeleton';
 
 export function TransactionList({ householdId, onEdit }: { householdId: string, onEdit: (transaction: any) => void }) {
   const [transactions, setTransactions] = useState<any[] | null>(null);
@@ -44,8 +45,24 @@ export function TransactionList({ householdId, onEdit }: { householdId: string, 
 
   if (!transactions) {
     return (
-      <div className="flex justify-center p-8">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
+      <div className="space-y-6">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="space-y-3">
+            <Skeleton className="h-4 w-24 ml-1" />
+            <div className="bg-white rounded-3xl border border-slate-100 p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-12 w-12 rounded-2xl" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </div>
+                <Skeleton className="h-6 w-24" />
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     );
   }

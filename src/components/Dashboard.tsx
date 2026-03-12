@@ -5,6 +5,7 @@ import { ArrowDownRight, ArrowUpRight, Wallet, CalendarDays } from 'lucide-react
 import { motion } from 'motion/react';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { parseISO, isWithinInterval, startOfDay, endOfDay, setDate, subMonths, addMonths } from 'date-fns';
+import { Skeleton } from './Skeleton';
 
 export function Dashboard({ householdId }: { householdId: string }) {
   const [transactions, setTransactions] = useState<any[] | null>(null);
@@ -75,6 +76,49 @@ export function Dashboard({ householdId }: { householdId: string }) {
     },
     { cycleIncome: 0, cycleExpense: 0 }
   );
+
+  if (!transactions) {
+    return (
+      <div className="space-y-6">
+        {/* Total Balance Skeleton */}
+        <div className="bg-slate-900 p-6 rounded-3xl shadow-xl relative overflow-hidden">
+          <div className="relative z-10 space-y-3">
+            <Skeleton className="h-4 w-24 bg-slate-700" />
+            <Skeleton className="h-10 w-48 bg-slate-700" />
+          </div>
+        </div>
+
+        {/* Monthly Cycle Skeleton */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-5 w-5 rounded-full" />
+              <Skeleton className="h-4 w-40" />
+            </div>
+            <Skeleton className="h-3 w-24" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-emerald-50 p-5 rounded-3xl border border-emerald-100/50 space-y-3">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-7 w-7 rounded-full bg-emerald-100" />
+                <Skeleton className="h-3 w-16 bg-emerald-100" />
+              </div>
+              <Skeleton className="h-6 w-24 bg-emerald-100" />
+            </div>
+
+            <div className="bg-rose-50 p-5 rounded-3xl border border-rose-100/50 space-y-3">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-7 w-7 rounded-full bg-rose-100" />
+                <Skeleton className="h-3 w-16 bg-rose-100" />
+              </div>
+              <Skeleton className="h-6 w-24 bg-rose-100" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -10,6 +10,7 @@ import { Plus, Activity, ListOrdered, LogOut, Download, CloudOff, PieChart, Sett
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { handleFirestoreError, OperationType } from './lib/firestore-errors';
+import { Skeleton } from './components/Skeleton';
 
 export default function App() {
   const [householdId, setHouseholdId] = useState<string | null>(null);
@@ -103,13 +104,28 @@ export default function App() {
     return () => unsubscribe();
   }, [householdId]);
 
-  if (!isLoaded) return null;
-
-  if (!householdId) {
-    return <AuthSetup onComplete={setHouseholdId} />;
-  }
-
   const renderContent = () => {
+    if (!isLoaded) {
+      return (
+        <div className="space-y-6">
+          <Skeleton className="h-32 w-full rounded-3xl" />
+          <div className="grid grid-cols-2 gap-4">
+            <Skeleton className="h-24 w-full rounded-3xl" />
+            <Skeleton className="h-24 w-full rounded-3xl" />
+          </div>
+          <div className="space-y-4">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-20 w-full rounded-2xl" />
+            <Skeleton className="h-20 w-full rounded-2xl" />
+          </div>
+        </div>
+      );
+    }
+
+    if (!householdId) {
+      return <AuthSetup onComplete={setHouseholdId} />;
+    }
+
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard householdId={householdId} />;
@@ -138,33 +154,39 @@ export default function App() {
       <header className="sticky top-0 z-30 bg-slate-50/80 backdrop-blur-md border-b border-slate-200/50 px-6 py-4 flex items-center justify-between">
         <h1 className="text-xl font-bold tracking-tight text-slate-900">Finance</h1>
         <div className="flex items-center gap-2 sm:gap-3">
-          {deferredPrompt && (
-            <button
-              onClick={async () => {
-                try {
-                  deferredPrompt.prompt();
-                  const { outcome } = await deferredPrompt.userChoice;
-                  if (outcome === 'accepted') {
-                    setDeferredPrompt(null);
-                  }
-                } catch (error) {
-                  console.error('Prompt failed:', error);
-                  setDeferredPrompt(null);
-                }
-              }}
-              className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors flex items-center gap-1"
-              title="Instal Aplikasi"
-            >
-              <Download className="w-4 h-4" />
-              <span className="text-xs font-semibold">Instal</span>
-            </button>
-          )}
-          
-          {!isOnline && (
-            <div className="flex items-center gap-1.5 text-rose-500 bg-rose-50 px-2.5 py-1 rounded-full text-xs font-medium">
-              <CloudOff className="w-3.5 h-3.5" />
-              <span>Offline</span>
-            </div>
+          {!isLoaded ? (
+            <Skeleton className="h-8 w-8 rounded-full" />
+          ) : (
+            <>
+              {deferredPrompt && (
+                <button
+                  onClick={async () => {
+                    try {
+                      deferredPrompt.prompt();
+                      const { outcome } = await deferredPrompt.userChoice;
+                      if (outcome === 'accepted') {
+                        setDeferredPrompt(null);
+                      }
+                    } catch (error) {
+                      console.error('Prompt failed:', error);
+                      setDeferredPrompt(null);
+                    }
+                  }}
+                  className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors flex items-center gap-1"
+                  title="Instal Aplikasi"
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="text-xs font-semibold">Instal</span>
+                </button>
+              )}
+              
+              {!isOnline && (
+                <div className="flex items-center gap-1.5 text-rose-500 bg-rose-50 px-2.5 py-1 rounded-full text-xs font-medium">
+                  <CloudOff className="w-3.5 h-3.5" />
+                  <span>Offline</span>
+                </div>
+              )}
+            </>
           )}
         </div>
       </header>
@@ -173,7 +195,7 @@ export default function App() {
       <main className="px-6 py-8 max-w-2xl mx-auto">
         <AnimatePresence mode="wait">
           <motion.div
-            key={activeTab}
+            key={isLoaded ? activeTab : 'loading'}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -189,9 +211,11 @@ export default function App() {
         <div className="flex items-center justify-around p-2 max-w-md mx-auto relative">
           <button
             onClick={() => setActiveTab('dashboard')}
+            disabled={!isLoaded || !householdId}
             className={cn(
               "flex flex-col items-center p-3 rounded-2xl flex-1 transition-colors",
-              activeTab === 'dashboard' ? "text-slate-900" : "text-slate-400 hover:text-slate-600"
+              activeTab === 'dashboard' ? "text-slate-900" : "text-slate-400 hover:text-slate-600",
+              (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
             )}
           >
             <Activity className="w-6 h-6 mb-1" />
@@ -200,9 +224,11 @@ export default function App() {
 
           <button
             onClick={() => setActiveTab('history')}
+            disabled={!isLoaded || !householdId}
             className={cn(
               "flex flex-col items-center p-3 rounded-2xl flex-1 transition-colors",
-              activeTab === 'history' ? "text-slate-900" : "text-slate-400 hover:text-slate-600"
+              activeTab === 'history' ? "text-slate-900" : "text-slate-400 hover:text-slate-600",
+              (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
             )}
           >
             <ListOrdered className="w-6 h-6 mb-1" />
@@ -214,9 +240,11 @@ export default function App() {
 
           <button
             onClick={() => setActiveTab('reports')}
+            disabled={!isLoaded || !householdId}
             className={cn(
               "flex flex-col items-center p-3 rounded-2xl flex-1 transition-colors",
-              activeTab === 'reports' ? "text-slate-900" : "text-slate-400 hover:text-slate-600"
+              activeTab === 'reports' ? "text-slate-900" : "text-slate-400 hover:text-slate-600",
+              (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
             )}
           >
             <PieChart className="w-6 h-6 mb-1" />
@@ -225,9 +253,11 @@ export default function App() {
 
           <button
             onClick={() => setActiveTab('settings')}
+            disabled={!isLoaded || !householdId}
             className={cn(
               "flex flex-col items-center p-3 rounded-2xl flex-1 transition-colors",
-              activeTab === 'settings' ? "text-slate-900" : "text-slate-400 hover:text-slate-600"
+              activeTab === 'settings' ? "text-slate-900" : "text-slate-400 hover:text-slate-600",
+              (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
             )}
           >
             <SettingsIcon className="w-6 h-6 mb-1" />
@@ -240,7 +270,11 @@ export default function App() {
               setEditingTransaction(null);
               setIsFormOpen(true);
             }}
-            className="absolute left-1/2 -top-6 -translate-x-1/2 bg-slate-900 text-white p-4 rounded-full shadow-xl shadow-slate-900/20 hover:scale-105 active:scale-95 transition-all"
+            disabled={!isLoaded || !householdId}
+            className={cn(
+              "absolute left-1/2 -top-6 -translate-x-1/2 bg-slate-900 text-white p-4 rounded-full shadow-xl shadow-slate-900/20 hover:scale-105 active:scale-95 transition-all",
+              (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
+            )}
           >
             <Plus className="w-8 h-8" />
           </button>
