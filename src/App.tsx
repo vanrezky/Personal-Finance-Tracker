@@ -153,10 +153,10 @@ export default function App() {
                 }
               }}
               className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors flex items-center gap-1"
-              title="Install App"
+              title="Instal Aplikasi"
             >
               <Download className="w-4 h-4" />
-              <span className="text-xs font-semibold">Install</span>
+              <span className="text-xs font-semibold">Instal</span>
             </button>
           )}
           
@@ -206,7 +206,7 @@ export default function App() {
             )}
           >
             <ListOrdered className="w-6 h-6 mb-1" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider">History</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider">Riwayat</span>
           </button>
 
           {/* Floating Action Button Placeholder for spacing */}
@@ -220,7 +220,7 @@ export default function App() {
             )}
           >
             <PieChart className="w-6 h-6 mb-1" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider">Reports</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider">Laporan</span>
           </button>
 
           <button
@@ -231,7 +231,7 @@ export default function App() {
             )}
           >
             <SettingsIcon className="w-6 h-6 mb-1" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider">Settings</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider">Pengaturan</span>
           </button>
 
           {/* Floating Action Button */}

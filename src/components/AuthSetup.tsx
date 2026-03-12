@@ -69,6 +69,9 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
           email: u.email,
           displayName: u.displayName,
         }, { merge: true });
+        
+        // Check if user already has a household to redirect immediately
+        await checkUserHousehold(u.uid);
       } catch (err) {
         handleFirestoreError(err, OperationType.WRITE, path);
       }
@@ -115,6 +118,7 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
         await setDoc(householdRef, {
           name: 'My Household',
           members: [user.uid],
+          ownerUid: user.uid,
           createdAt: new Date().toISOString(),
           payday: parseInt(payday, 10)
         });

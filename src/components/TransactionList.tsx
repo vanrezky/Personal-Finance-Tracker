@@ -56,8 +56,8 @@ export function TransactionList({ householdId, onEdit }: { householdId: string, 
         <div className="bg-slate-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
           <Calendar className="w-8 h-8 text-slate-400" />
         </div>
-        <h3 className="text-base sm:text-lg font-medium text-slate-900 mb-1">No transactions yet</h3>
-        <p className="text-slate-500 text-xs sm:text-sm">Tap the + button to add your first transaction.</p>
+        <h3 className="text-base sm:text-lg font-medium text-slate-900 mb-1">Belum ada transaksi</h3>
+        <p className="text-slate-500 text-xs sm:text-sm">Ketuk tombol + untuk menambahkan transaksi pertama Anda.</p>
       </div>
     );
   }

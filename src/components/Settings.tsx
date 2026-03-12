@@ -3,10 +3,12 @@ import { auth, db, doc, setDoc, getDoc } from '../firebase';
 import { motion } from 'motion/react';
 import { User, Calendar, Save, CheckCircle2, Copy, Users, LogOut } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { cn } from '../lib/utils';
 
 export function Settings({ householdId, onLogout }: { householdId: string, onLogout: () => void }) {
   const [displayName, setDisplayName] = useState('');
   const [payday, setPayday] = useState('25');
+  const [ownerUid, setOwnerUid] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -24,7 +26,9 @@ export function Settings({ householdId, onLogout }: { householdId: string, onLog
 
         const householdDoc = await getDoc(doc(db, 'households', householdId));
         if (householdDoc.exists()) {
-          setPayday(String(householdDoc.data().payday || 25));
+          const data = householdDoc.data();
+          setPayday(String(data.payday || 25));
+          setOwnerUid(data.ownerUid || null);
         }
       } catch (err) {
         console.error('Error fetching settings:', err);
@@ -49,10 +53,12 @@ export function Settings({ householdId, onLogout }: { householdId: string, onLog
         displayName
       }, { merge: true });
 
-      // Update household payday
-      await setDoc(doc(db, 'households', householdId), {
-        payday: parseInt(payday, 10)
-      }, { merge: true });
+      // Only owner can update household settings
+      if (isOwner) {
+        await setDoc(doc(db, 'households', householdId), {
+          payday: parseInt(payday, 10)
+        }, { merge: true });
+      }
 
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -68,6 +74,8 @@ export function Settings({ householdId, onLogout }: { householdId: string, onLog
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const isOwner = auth.currentUser?.uid === ownerUid;
 
   if (loading) {
     return (
@@ -104,15 +112,24 @@ export function Settings({ householdId, onLogout }: { householdId: string, onLog
             </label>
             <p className="text-[10px] text-slate-500 mb-1">
               Siklus bulanan di Dashboard akan dimulai dari tanggal ini.
+              {!isOwner && (
+                <span className="block text-rose-500 font-medium mt-1">
+                  * Hanya pemilik (pembuat ID) yang bisa mengubah tanggal gajian.
+                </span>
+              )}
             </p>
             <input
               type="number"
               min="1"
               max="31"
               required
+              disabled={!isOwner}
               value={payday}
               onChange={(e) => setPayday(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 border-none rounded-2xl text-slate-900 focus:ring-2 focus:ring-indigo-500 transition-shadow"
+              className={cn(
+                "w-full px-4 py-3 bg-slate-50 border-none rounded-2xl text-slate-900 focus:ring-2 focus:ring-indigo-500 transition-shadow",
+                !isOwner && "opacity-60 cursor-not-allowed"
+              )}
             />
           </div>
 

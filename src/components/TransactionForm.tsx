@@ -281,7 +281,7 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
         >
           <div className="flex items-center justify-between p-6 border-b border-slate-100">
             <div className="flex items-center gap-3">
-              <h2 className="text-xl font-semibold text-slate-800">{initialData ? 'Edit Transaction' : 'New Transaction'}</h2>
+              <h2 className="text-xl font-semibold text-slate-800">{initialData ? 'Edit Transaksi' : 'Transaksi Baru'}</h2>
               {!initialData && (
                 <button
                   type="button"
@@ -331,7 +331,7 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
                   type === 'income' ? "text-emerald-600" : "text-slate-500 hover:text-slate-700"
                 )}
               >
-                Income
+                Pemasukan
               </button>
               <button
                 type="button"
@@ -344,13 +344,13 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
                   type === 'expense' ? "text-rose-600" : "text-slate-500 hover:text-slate-700"
                 )}
               >
-                Expense
+                Pengeluaran
               </button>
             </div>
 
             {/* Amount */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-600 px-1">Amount</label>
+              <label className="text-sm font-medium text-slate-600 px-1">Jumlah</label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">Rp</span>
                 <input
@@ -373,7 +373,7 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
 
             {/* Category */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-600 px-1">Category</label>
+              <label className="text-sm font-medium text-slate-600 px-1">Kategori</label>
               <div className="grid grid-cols-3 gap-2">
                 {categories.map(cat => (
                   <label 
@@ -402,19 +402,19 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
 
             {/* Note */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-600 px-1">Note (Optional)</label>
+              <label className="text-sm font-medium text-slate-600 px-1">Catatan (Opsional)</label>
               <input
                 type="text"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 className="w-full px-4 py-4 bg-slate-50 border-none rounded-2xl text-slate-900 focus:ring-2 focus:ring-slate-900 transition-shadow"
-                placeholder="Add a note..."
+                placeholder="Tambah catatan..."
               />
             </div>
 
             {/* Date */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-600 px-1">Date</label>
+              <label className="text-sm font-medium text-slate-600 px-1">Tanggal</label>
               <input
                 type="date"
                 required
@@ -429,7 +429,7 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
               className="w-full py-4 bg-slate-900 text-white rounded-2xl font-semibold text-lg hover:bg-slate-800 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
             >
               <Check className="w-5 h-5" />
-              Save Transaction
+              Simpan Transaksi
             </button>
           </form>
         </motion.div>

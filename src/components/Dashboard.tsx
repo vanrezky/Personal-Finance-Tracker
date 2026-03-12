@@ -104,7 +104,7 @@ export function Dashboard({ householdId }: { householdId: string }) {
             <h3 className="text-sm">Bulan Ini (Gajian tgl {payday})</h3>
           </div>
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-            Cycle: {cycleStart.getDate()} - {cycleEnd.getDate()}
+            Siklus: {cycleStart.getDate()} - {cycleEnd.getDate()}
           </span>
         </div>
 
@@ -119,7 +119,7 @@ export function Dashboard({ householdId }: { householdId: string }) {
               <div className="bg-emerald-100 p-1.5 rounded-full">
                 <ArrowDownRight className="w-4 h-4" />
               </div>
-              <span className="text-xs font-bold uppercase tracking-wider">Income</span>
+              <span className="text-xs font-bold uppercase tracking-wider">Pemasukan</span>
             </div>
             <p className="text-lg font-bold text-emerald-950">
               {formatCurrency(cycleIncome)}
@@ -136,7 +136,7 @@ export function Dashboard({ householdId }: { householdId: string }) {
               <div className="bg-rose-100 p-1.5 rounded-full">
                 <ArrowUpRight className="w-4 h-4" />
               </div>
-              <span className="text-xs font-bold uppercase tracking-wider">Expense</span>
+              <span className="text-xs font-bold uppercase tracking-wider">Pengeluaran</span>
             </div>
             <p className="text-lg font-bold text-rose-950">
               {formatCurrency(cycleExpense)}

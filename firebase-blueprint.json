@@ -81,9 +81,13 @@
           "minimum": 1,
           "maximum": 31,
           "description": "The day of the month when the user gets paid"
+        },
+        "ownerUid": {
+          "type": "string",
+          "description": "UID of the user who created the household"
         }
       },
-      "required": ["name", "members", "createdAt"]
+      "required": ["name", "members", "createdAt", "ownerUid"]
     },
     "User": {
       "title": "User",

@@ -28,9 +28,9 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
           <div className="bg-white p-6 rounded-2xl shadow-xl max-w-md w-full">
-            <h2 className="text-xl font-bold text-rose-600 mb-2">Something went wrong</h2>
+            <h2 className="text-xl font-bold text-rose-600 mb-2">Terjadi kesalahan</h2>
             <p className="text-slate-600 mb-4 text-sm">
-              An unexpected error occurred. Please try reloading the page.
+              Terjadi kesalahan yang tidak terduga. Silakan coba muat ulang halaman.
             </p>
             <pre className="bg-slate-100 p-3 rounded-xl text-xs overflow-auto max-h-40 mb-4 text-slate-800">
               {this.state.error instanceof Error ? this.state.error.message : String(this.state.error)}
@@ -39,7 +39,7 @@ export class ErrorBoundary extends Component<Props, State> {
               onClick={() => window.location.reload()}
               className="w-full py-3 bg-slate-900 text-white rounded-xl font-medium"
             >
-              Reload Page
+              Muat Ulang Halaman
             </button>
           </div>
         </div>
