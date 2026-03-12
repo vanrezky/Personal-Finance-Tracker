@@ -1,5 +1,5 @@
 {
   "name": "Personal Finance Tracker",
   "description": "A minimalist and modern PWA for tracking personal finances with offline support and Google Sheets sync.",
-  "requestFramePermissions": []
+  "requestFramePermissions": ["microphone"]
 }

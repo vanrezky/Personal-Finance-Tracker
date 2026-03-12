@@ -1,9 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { db, collection, addDoc, updateDoc, doc, auth } from '../firebase';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Check } from 'lucide-react';
+import { X, Check, Mic } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+
+declare global {
+  interface Window {
+    webkitSpeechRecognition: any;
+    SpeechRecognition: any;
+  }
+}
 
 interface TransactionFormProps {
   householdId: string;
@@ -21,14 +28,158 @@ const INCOME_CATEGORIES = [
   'Gaji', 'Bonus', 'Hasil Usaha', 'Investasi', 'Pemberian', 'Lainnya'
 ];
 
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  'Makan': ['makan', 'restoran', 'warung', 'nasi', 'dinner', 'lunch', 'sarapan'],
+  'Jajan': ['jajan', 'kopi', 'snack', 'cemilan', 'minum', 'starbucks', 'boba'],
+  'Belanja Mingguan': ['belanja', 'pasar', 'supermarket', 'indomaret', 'alfamart', 'sayur'],
+  'BBM Mobil': ['bensin mobil', 'pertamax mobil', 'solar mobil', 'isi bensin mobil'],
+  'BBM Motor': ['bensin motor', 'pertamax motor', 'bensin', 'bbm', 'isi bensin'],
+  'Service Kendaraan': ['service', 'bengkel', 'oli', 'ban', 'cuci mobil', 'cuci motor'],
+  'Token Listrik': ['listrik', 'token', 'pln'],
+  'Tagihan Air': ['air', 'pdam'],
+  'Internet & Pulsa': ['pulsa', 'kuota', 'internet', 'wifi', 'telkomsel', 'indosat', 'xl'],
+  'Transportasi': ['gojek', 'grab', 'ojek', 'taksi', 'bus', 'kereta', 'mrt', 'lrt'],
+  'Hiburan': ['nonton', 'bioskop', 'game', 'liburan', 'netflix', 'spotify'],
+  'Gaji': ['gaji', 'payroll', 'salary'],
+  'Bonus': ['bonus', 'thr', 'insentif'],
+  'Hasil Usaha': ['dagang', 'jualan', 'omzet', 'laba'],
+  'Investasi': ['dividen', 'saham', 'crypto', 'reksadana'],
+  'Pemberian': ['dikasih', 'pemberian', 'hadiah', 'angpao']
+};
+
 export function TransactionForm({ householdId, onClose, initialData }: TransactionFormProps) {
   const [type, setType] = useState<'income' | 'expense'>(initialData?.type || 'expense');
   const [amountStr, setAmountStr] = useState(initialData?.amount ? new Intl.NumberFormat('id-ID').format(initialData.amount) : '');
   const [category, setCategory] = useState(initialData?.category || '');
   const [note, setNote] = useState(initialData?.note || '');
   const [date, setDate] = useState(initialData?.date ? initialData.date.split('T')[0] : new Date().toISOString().split('T')[0]);
+  const [isListening, setIsListening] = useState(false);
 
   const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+
+  const parseIndonesianNumberWords = (text: string): number => {
+    const words = text.toLowerCase().split(/\s+/);
+    const map: Record<string, number> = {
+      'nol': 0, 'satu': 1, 'se': 1, 'dua': 2, 'tiga': 3, 'empat': 4, 'lima': 5,
+      'enam': 6, 'tujuh': 7, 'delapan': 8, 'sembilan': 9, 'sepuluh': 10,
+      'sebelas': 11, 'belas': 10, 'puluh': 10, 'ratus': 100, 'ribu': 1000, 'juta': 1000000
+    };
+
+    let total = 0;
+    let current = 0;
+
+    words.forEach(word => {
+      if (map[word] !== undefined) {
+        const val = map[word];
+        if (val === 1000000 || val === 1000) {
+          if (current === 0) current = 1;
+          total += current * val;
+          current = 0;
+        } else if (val === 100 || val === 10) {
+          if (current === 0) current = 1;
+          current *= val;
+        } else if (word === 'belas') {
+          current += 10;
+        } else {
+          current += val;
+        }
+      }
+    });
+    total += current;
+    return total;
+  };
+
+  const processVoiceInput = useCallback((text: string) => {
+    const lowerText = text.toLowerCase();
+    
+    // 1. Extract Amount using Regex
+    let amount = 0;
+    // Strong regex for numbers like "50.000", "50rb", "1 juta", "10000"
+    const amountRegex = /(\d+[\d\.,]*)\s*(ribu|rb|juta|jt)?/i;
+    const match = lowerText.match(amountRegex);
+    
+    if (match) {
+      let valStr = match[1].replace(/\./g, '').replace(/,/g, '.');
+      let val = parseFloat(valStr);
+      const multiplier = match[2]?.toLowerCase();
+      if (multiplier === 'ribu' || multiplier === 'rb') val *= 1000;
+      if (multiplier === 'juta' || multiplier === 'jt') val *= 1000000;
+      amount = val;
+    } else {
+      // Fallback to word-based parsing
+      amount = parseIndonesianNumberWords(lowerText);
+    }
+
+    if (amount > 0) {
+      setAmountStr(new Intl.NumberFormat('id-ID').format(amount));
+    }
+
+    // 2. Match Category
+    let foundCategory = '';
+    let foundType: 'income' | 'expense' = 'expense';
+
+    // Search through keywords
+    for (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+      if (keywords.some(kw => lowerText.includes(kw))) {
+        foundCategory = cat;
+        foundType = INCOME_CATEGORIES.includes(cat) ? 'income' : 'expense';
+        break;
+      }
+    }
+
+    // 3. Set UI State
+    if (foundCategory) {
+      setType(foundType);
+      setCategory(foundCategory);
+      // Clean up note: remove the amount and category keywords if possible, 
+      // but for simplicity, we'll just use the transcript as note or a cleaned version
+      setNote(text);
+    } else {
+      setCategory('Lainnya');
+      setNote(text);
+    }
+  }, []);
+
+  const startListening = () => {
+    if (typeof window === 'undefined') return;
+    
+    if (!navigator.onLine) {
+      alert('Anda sedang offline. Fitur Voice Input membutuhkan koneksi internet untuk memproses suara.');
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Browser Anda tidak mendukung Voice Input.');
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'id-ID';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error', event.error);
+      if (event.error === 'not-allowed') {
+        alert('Izin mikrofon ditolak. Pastikan Anda memberikan izin akses mikrofon di browser atau buka aplikasi di tab baru jika masih bermasalah.');
+      } else if (event.error === 'network') {
+        alert('Gagal terhubung ke layanan pengenal suara (Network Error). Pastikan koneksi internet Anda stabil. Jika Anda menggunakan Chrome, fitur ini memerlukan akses ke server Google.');
+      } else {
+        alert(`Terjadi kesalahan pada Voice Input: ${event.error}`);
+      }
+      setIsListening(false);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      processVoiceInput(transcript);
+    };
+
+    recognition.start();
+  };
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value.replace(/\D/g, '');
@@ -111,7 +262,28 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
           className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
         >
           <div className="flex items-center justify-between p-6 border-b border-slate-100">
-            <h2 className="text-xl font-semibold text-slate-800">{initialData ? 'Edit Transaction' : 'New Transaction'}</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-semibold text-slate-800">{initialData ? 'Edit Transaction' : 'New Transaction'}</h2>
+              {!initialData && (
+                <button
+                  type="button"
+                  onClick={startListening}
+                  className={cn(
+                    "p-2 rounded-full transition-all relative",
+                    isListening ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                  )}
+                >
+                  {isListening ? (
+                    <>
+                      <Mic className="w-5 h-5" />
+                      <span className="absolute inset-0 rounded-full bg-rose-400 animate-ping opacity-25" />
+                    </>
+                  ) : (
+                    <Mic className="w-5 h-5" />
+                  )}
+                </button>
+              )}
+            </div>
             <button
               onClick={onClose}
               className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors"
