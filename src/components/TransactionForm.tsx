@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { db, collection, addDoc, updateDoc, doc, auth } from '../firebase';
+import { db, collection, addDoc, updateDoc, doc, auth, onSnapshot, query, orderBy, where, getDocs, writeBatch, limit, deleteDoc } from '../firebase';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Check, Mic } from 'lucide-react';
+import { X, Check, Mic, Plus, Edit2, Trash2, MoreVertical } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 
@@ -54,8 +54,102 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
   const [note, setNote] = useState(initialData?.note || '');
   const [date, setDate] = useState(initialData?.date ? initialData.date.split('T')[0] : new Date().toISOString().split('T')[0]);
   const [isListening, setIsListening] = useState(false);
+  
+  const [customCategories, setCustomCategories] = useState<any[]>([]);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
 
-  const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  useEffect(() => {
+    const path = `households/${householdId}/categories`;
+    const q = query(collection(db, path), orderBy('createdAt', 'asc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const cats = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setCustomCategories(cats);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, path);
+    });
+    return () => unsubscribe();
+  }, [householdId]);
+
+  const defaultCategories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  const currentCustomCategories = customCategories.filter(c => c.type === type);
+  
+  const categoryObjects = [
+    ...defaultCategories.map(name => ({ id: name, name, isCustom: false })),
+    ...currentCustomCategories.map(c => ({ id: c.id, name: c.name, isCustom: true }))
+  ];
+
+  const handleSaveCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCategoryName.trim() || isSavingCategory) return;
+    
+    setIsSavingCategory(true);
+    try {
+      if (editingCategory) {
+        const path = `households/${householdId}/categories/${editingCategory.id}`;
+        await updateDoc(doc(db, path), { name: newCategoryName.trim() });
+        
+        // Update all transactions that use this category
+        const txPath = `households/${householdId}/transactions`;
+        const q = query(collection(db, txPath), where('category', '==', editingCategory.name));
+        const snapshot = await getDocs(q);
+        
+        if (!snapshot.empty) {
+          const batch = writeBatch(db);
+          snapshot.docs.forEach(d => {
+            batch.update(d.ref, { category: newCategoryName.trim() });
+          });
+          await batch.commit();
+        }
+        
+        if (category === editingCategory.name) {
+          setCategory(newCategoryName.trim());
+        }
+      } else {
+        const path = `households/${householdId}/categories`;
+        await addDoc(collection(db, path), {
+          name: newCategoryName.trim(),
+          type,
+          createdAt: new Date().toISOString(),
+          authorUid: auth.currentUser?.uid
+        });
+        setCategory(newCategoryName.trim());
+      }
+      setIsCategoryModalOpen(false);
+      setEditingCategory(null);
+      setNewCategoryName('');
+    } catch (error) {
+      console.error('Failed to save category', error);
+      alert('Gagal menyimpan kategori.');
+    } finally {
+      setIsSavingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async (cat: any) => {
+    try {
+      // Check if used
+      const txPath = `households/${householdId}/transactions`;
+      const q = query(collection(db, txPath), where('category', '==', cat.name), limit(1));
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+        alert(`Kategori "${cat.name}" tidak bisa dihapus karena sudah digunakan pada transaksi.`);
+        return;
+      }
+      
+      if (confirm(`Hapus kategori "${cat.name}"?`)) {
+        const path = `households/${householdId}/categories/${cat.id}`;
+        await deleteDoc(doc(db, path));
+        if (category === cat.name) setCategory('');
+      }
+    } catch (error) {
+      console.error('Failed to delete category', error);
+      alert('Gagal menghapus kategori.');
+    }
+  };
 
   const parseIndonesianNumberWords = (text: string): number => {
     const words = text.toLowerCase().split(/\s+/);
@@ -127,6 +221,17 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
       }
     }
 
+    // Search through custom categories if not found
+    if (!foundCategory) {
+      for (const customCat of customCategories) {
+        if (lowerText.includes(customCat.name.toLowerCase())) {
+          foundCategory = customCat.name;
+          foundType = customCat.type;
+          break;
+        }
+      }
+    }
+
     // 3. Set UI State
     if (foundCategory) {
       setType(foundType);
@@ -138,7 +243,7 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
       setCategory('Lainnya');
       setNote(text);
     }
-  }, []);
+  }, [customCategories]);
 
   const startListening = () => {
     if (typeof window === 'undefined') return;
@@ -380,28 +485,68 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-600 px-1">Kategori</label>
               <div className="grid grid-cols-3 gap-2">
-                {categories.map(cat => (
-                  <label 
-                    key={cat} 
-                    className={cn(
-                      "cursor-pointer flex items-center justify-center text-center px-1 py-3 rounded-xl border text-xs font-medium transition-all select-none h-full min-h-[3rem]", 
-                      category === cat 
-                        ? (type === 'income' ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-rose-50 border-rose-200 text-rose-700") 
-                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                {categoryObjects.map(cat => (
+                  <div key={cat.id} className="relative group">
+                    <label 
+                      className={cn(
+                        "cursor-pointer flex items-center justify-center text-center px-1 py-3 rounded-xl border text-xs font-medium transition-all select-none h-full min-h-[3rem]", 
+                        category === cat.name 
+                          ? (type === 'income' ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-rose-50 border-rose-200 text-rose-700") 
+                          : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                      )}
+                    >
+                      <input 
+                        type="radio" 
+                        name="category" 
+                        value={cat.name} 
+                        checked={category === cat.name} 
+                        onChange={() => setCategory(cat.name)} 
+                        className="hidden" 
+                        required
+                      />
+                      <span className="flex-1 line-clamp-2 px-1">{cat.name}</span>
+                    </label>
+                    {cat.isCustom && (
+                      <div className="absolute -top-2 -right-2 hidden group-hover:flex gap-1 z-10">
+                        <button 
+                          type="button" 
+                          onClick={(e) => { 
+                            e.preventDefault(); 
+                            e.stopPropagation(); 
+                            setEditingCategory(cat);
+                            setNewCategoryName(cat.name);
+                            setIsCategoryModalOpen(true);
+                          }} 
+                          className="p-1.5 bg-blue-100 text-blue-600 hover:bg-blue-200 rounded-full shadow-sm transition-colors"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleDeleteCategory(cat);
+                          }} 
+                          className="p-1.5 bg-rose-100 text-rose-600 hover:bg-rose-200 rounded-full shadow-sm transition-colors"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
                     )}
-                  >
-                    <input 
-                      type="radio" 
-                      name="category" 
-                      value={cat} 
-                      checked={category === cat} 
-                      onChange={() => setCategory(cat)} 
-                      className="hidden" 
-                      required
-                    />
-                    {cat}
-                  </label>
+                  </div>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingCategory(null);
+                    setNewCategoryName('');
+                    setIsCategoryModalOpen(true);
+                  }}
+                  className="flex items-center justify-center gap-1 text-center px-1 py-3 rounded-xl border border-dashed border-slate-300 text-xs font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-all select-none h-full min-h-[3rem]"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Tambah
+                </button>
               </div>
             </div>
 
@@ -446,6 +591,63 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
           </form>
         </motion.div>
       </motion.div>
+
+      {/* Category Modal */}
+      <AnimatePresence>
+        {isCategoryModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl"
+            >
+              <h3 className="text-lg font-bold text-slate-900 mb-4">
+                {editingCategory ? 'Edit Kategori' : 'Tambah Kategori'}
+              </h3>
+              <form onSubmit={handleSaveCategory} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-600 px-1">Nama Kategori</label>
+                  <input
+                    type="text"
+                    required
+                    autoFocus
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl text-slate-900 focus:ring-2 focus:ring-slate-900 transition-shadow"
+                    placeholder="Contoh: Cicilan Motor"
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsCategoryModalOpen(false)}
+                    className="flex-1 py-3 px-4 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition-colors"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!newCategoryName.trim() || isSavingCategory}
+                    className="flex-1 py-3 px-4 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    {isSavingCategory ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      'Simpan'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </AnimatePresence>
   );
 }

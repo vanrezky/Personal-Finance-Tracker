@@ -101,6 +101,23 @@ service cloud.firestore {
                       request.resource.data.createdAt == resource.data.createdAt;
         allow delete: if isHouseholdMember(householdId);
       }
+
+      match /categories/{categoryId} {
+        allow read: if isHouseholdMember(householdId);
+        allow create: if isHouseholdMember(householdId) &&
+                      request.resource.data.keys().hasAll(['name', 'type', 'createdAt', 'authorUid']) &&
+                      request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 100 &&
+                      request.resource.data.type in ['income', 'expense'] &&
+                      request.resource.data.createdAt is string &&
+                      request.resource.data.authorUid == request.auth.uid;
+        allow update: if isHouseholdMember(householdId) &&
+                      request.resource.data.keys().hasAll(['name', 'type', 'createdAt', 'authorUid']) &&
+                      request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 100 &&
+                      request.resource.data.type == resource.data.type &&
+                      request.resource.data.createdAt == resource.data.createdAt &&
+                      request.resource.data.authorUid == resource.data.authorUid;
+        allow delete: if isHouseholdMember(householdId);
+      }
     }
   }
 }

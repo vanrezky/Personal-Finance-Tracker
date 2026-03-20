@@ -15,6 +15,22 @@ export class ErrorBoundary extends Component<Props, State> {
     error: null
   };
 
+  private handleFirestoreError = (event: Event) => {
+    const customEvent = event as CustomEvent;
+    this.setState({
+      hasError: true,
+      error: new Error(JSON.stringify(customEvent.detail))
+    });
+  };
+
+  public componentDidMount() {
+    window.addEventListener('firestore-error', this.handleFirestoreError);
+  }
+
+  public componentWillUnmount() {
+    window.removeEventListener('firestore-error', this.handleFirestoreError);
+  }
+
   public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }

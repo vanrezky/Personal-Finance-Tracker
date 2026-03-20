@@ -51,7 +51,15 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
       path
     };
     console.error('Firestore Permission Error:', JSON.stringify(errInfo, null, 2));
-    throw new Error(JSON.stringify(errInfo));
+    
+    // Dispatch custom event for ErrorBoundary
+    window.dispatchEvent(new CustomEvent('firestore-error', { detail: errInfo }));
+    
+    // Throw error asynchronously to avoid breaking Firestore's internal state machine
+    setTimeout(() => {
+      throw new Error(JSON.stringify(errInfo));
+    }, 0);
+    return;
   }
   
   throw error;
