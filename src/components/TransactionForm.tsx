@@ -360,7 +360,7 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
             date: new Date(date).toISOString(),
             createdAt: new Date().toISOString(),
             authorUid: auth.currentUser.uid,
-            authorName: auth.currentUser.displayName || auth.currentUser.email || 'Unknown',
+            authorName: auth.currentUser.displayName || auth.currentUser.email || '',
           });
         } catch (err) {
           handleFirestoreError(err, OperationType.CREATE, path);

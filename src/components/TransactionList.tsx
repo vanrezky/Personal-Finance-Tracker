@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { db, collection, query, orderBy, onSnapshot, doc, deleteDoc } from '../firebase';
 import { formatCurrency, cn } from '../lib/utils';
 import { format, parseISO } from 'date-fns';
-import { ArrowDownRight, ArrowUpRight, Calendar, Tag, Trash2, Filter, X } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Calendar, Tag, Trash2, Filter, X, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { Skeleton } from './Skeleton';
@@ -290,6 +290,10 @@ export function TransactionList({ householdId, onEdit }: { householdId: string, 
                         <span className="truncate">{item.note}</span>
                       </p>
                     )}
+                    <p className="text-[10px] sm:text-xs text-slate-400 flex items-center gap-1 mt-0.5 truncate">
+                      <User className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
+                      <span className="truncate">{item.authorName && item.authorName !== 'Unknown' ? item.authorName : '-'}</span>
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 sm:gap-4 ml-4">
