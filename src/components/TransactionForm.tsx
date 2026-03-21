@@ -379,7 +379,7 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
       URL.revokeObjectURL(objectUrl);
 
       // 2. Call Gemini API
-      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const prompt = `
         Analisis struk belanja ini. Ekstrak informasi berikut dalam format JSON:
         {
