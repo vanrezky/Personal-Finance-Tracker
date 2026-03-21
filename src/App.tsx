@@ -152,7 +152,10 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-24">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-slate-50/80 backdrop-blur-md border-b border-slate-200/50 px-6 py-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold tracking-tight text-slate-900">Finance</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">Finance</h1>
+          <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold tracking-wider">v1.1.0</span>
+        </div>
         <div className="flex items-center gap-2 sm:gap-3">
           {!isLoaded ? (
             <Skeleton className="h-8 w-8 rounded-full" />

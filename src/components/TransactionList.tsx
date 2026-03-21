@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { db, collection, query, orderBy, onSnapshot, doc, deleteDoc } from '../firebase';
 import { formatCurrency, cn } from '../lib/utils';
 import { format, parseISO } from 'date-fns';
-import { ArrowDownRight, ArrowUpRight, Calendar, Tag, Trash2, Filter, X, User } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Calendar, Tag, Trash2, Filter, X, User, Receipt, Clock, FileText, Image as ImageIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { Skeleton } from './Skeleton';
@@ -10,6 +10,8 @@ import { Skeleton } from './Skeleton';
 export function TransactionList({ householdId, onEdit }: { householdId: string, onEdit: (transaction: any) => void }) {
   const [transactions, setTransactions] = useState<any[] | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [viewingReceipt, setViewingReceipt] = useState<string | null>(null);
+  const [viewingDetail, setViewingDetail] = useState<any | null>(null);
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   
   // Filter states
@@ -265,9 +267,10 @@ export function TransactionList({ householdId, onEdit }: { householdId: string, 
                 <div
                 key={item.id}
                 className={cn(
-                  "flex items-center justify-between p-3 sm:p-4",
+                  "flex items-center justify-between p-3 sm:p-4 hover:bg-slate-50 transition-colors cursor-pointer",
                   index !== items.length - 1 && "border-b border-slate-50"
                 )}
+                onClick={() => setViewingDetail(item)}
               >
                 <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
                   <div
@@ -296,7 +299,7 @@ export function TransactionList({ householdId, onEdit }: { householdId: string, 
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 sm:gap-4 ml-4">
+                <div className="flex items-center gap-2 sm:gap-4 ml-4" onClick={(e) => e.stopPropagation()}>
                   <div className={cn(
                     "text-sm sm:text-base font-semibold whitespace-nowrap",
                     item.type === 'income' ? "text-emerald-600" : "text-slate-900"
@@ -304,6 +307,15 @@ export function TransactionList({ householdId, onEdit }: { householdId: string, 
                     {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)}
                   </div>
                   <div className="flex items-center gap-0.5 sm:gap-1">
+                    {item.receiptImage && (
+                      <button
+                        onClick={() => setViewingReceipt(item.receiptImage)}
+                        className="p-1.5 sm:p-2 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-full transition-colors"
+                        title="Lihat Struk"
+                      >
+                        <Receipt className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      </button>
+                    )}
                     <button
                       onClick={() => onEdit(item)}
                       className="p-1.5 sm:p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-full transition-colors"
@@ -356,6 +368,148 @@ export function TransactionList({ householdId, onEdit }: { householdId: string, 
                 >
                   Ya, Hapus
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Receipt Viewer Modal */}
+      <AnimatePresence>
+        {viewingReceipt && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4"
+            onClick={() => setViewingReceipt(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative max-w-2xl w-full max-h-[90vh] flex flex-col items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setViewingReceipt(null)}
+                className="absolute -top-12 right-0 p-2 text-white/70 hover:text-white transition-colors"
+              >
+                <X className="w-8 h-8" />
+              </button>
+              <img 
+                src={viewingReceipt} 
+                alt="Struk Belanja" 
+                className="rounded-xl max-h-[85vh] object-contain shadow-2xl"
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Detail Modal */}
+      <AnimatePresence>
+        {viewingDetail && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"
+            onClick={() => setViewingDetail(null)}
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-6 border-b border-slate-100">
+                <h2 className="text-xl font-semibold text-slate-800">Detail Transaksi</h2>
+                <button
+                  onClick={() => setViewingDetail(null)}
+                  className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto space-y-6">
+                <div className="flex flex-col items-center justify-center text-center space-y-2">
+                  <div className={cn(
+                    "p-4 rounded-full mb-2",
+                    viewingDetail.type === 'income' ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+                  )}>
+                    {viewingDetail.type === 'income' ? (
+                      <ArrowDownRight className="w-8 h-8" />
+                    ) : (
+                      <ArrowUpRight className="w-8 h-8" />
+                    )}
+                  </div>
+                  <h3 className={cn(
+                    "text-3xl font-bold",
+                    viewingDetail.type === 'income' ? "text-emerald-600" : "text-slate-900"
+                  )}>
+                    {viewingDetail.type === 'income' ? '+' : '-'}{formatCurrency(viewingDetail.amount)}
+                  </h3>
+                  <p className="text-slate-500 font-medium">{viewingDetail.category}</p>
+                </div>
+
+                <div className="space-y-4 bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                  <div className="flex items-start gap-3">
+                    <Calendar className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-slate-500 font-medium mb-0.5">Tanggal</p>
+                      <p className="text-sm text-slate-900">{format(parseISO(viewingDetail.date), 'EEEE, dd MMMM yyyy')}</p>
+                    </div>
+                  </div>
+                  
+                  {viewingDetail.note && (
+                    <div className="flex items-start gap-3">
+                      <FileText className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs text-slate-500 font-medium mb-0.5">Catatan</p>
+                        <p className="text-sm text-slate-900">{viewingDetail.note}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-start gap-3">
+                    <User className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-slate-500 font-medium mb-0.5">Ditambahkan oleh</p>
+                      <p className="text-sm text-slate-900">{viewingDetail.authorName && viewingDetail.authorName !== 'Unknown' ? viewingDetail.authorName : '-'}</p>
+                    </div>
+                  </div>
+                  
+                  {viewingDetail.receiptImage && (
+                    <div className="flex items-start gap-3">
+                      <ImageIcon className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
+                      <div className="w-full">
+                        <p className="text-xs text-slate-500 font-medium mb-2">Struk Belanja</p>
+                        <div 
+                          className="relative rounded-xl overflow-hidden border border-slate-200 cursor-pointer group"
+                          onClick={() => {
+                            setViewingDetail(null);
+                            setViewingReceipt(viewingDetail.receiptImage);
+                          }}
+                        >
+                          <img 
+                            src={viewingDetail.receiptImage} 
+                            alt="Struk" 
+                            className="w-full h-32 object-cover transition-transform duration-300 group-hover:scale-105" 
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                            <div className="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 shadow-sm">
+                              <Receipt className="w-3.5 h-3.5" /> Lihat Penuh
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
           </motion.div>

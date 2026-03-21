@@ -38,7 +38,8 @@ service cloud.firestore {
              data.createdAt is string && data.createdAt.size() > 0 && data.createdAt.size() <= 50 &&
              data.authorUid is string && data.authorUid.size() > 0 && data.authorUid.size() <= 100 &&
              (!('note' in data) || (data.note is string && data.note.size() <= 1000)) &&
-             (!('authorName' in data) || (data.authorName is string && data.authorName.size() <= 200));
+             (!('authorName' in data) || (data.authorName is string && data.authorName.size() <= 200)) &&
+             (!('receiptImage' in data) || (data.receiptImage is string && data.receiptImage.size() <= 1000000));
     }
     
     function isValidUser(data) {

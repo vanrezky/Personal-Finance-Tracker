@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { db, collection, addDoc, updateDoc, doc, auth, onSnapshot, query, orderBy, where, getDocs, writeBatch, limit, deleteDoc } from '../firebase';
+import { deleteField } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Check, Mic, Plus, Edit2, Trash2, MoreVertical } from 'lucide-react';
+import { X, Check, Mic, Plus, Edit2, Trash2, MoreVertical, Camera, Loader2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { GoogleGenAI } from '@google/genai';
 
 declare global {
   interface Window {
@@ -54,6 +56,9 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
   const [note, setNote] = useState(initialData?.note || '');
   const [date, setDate] = useState(initialData?.date ? initialData.date.split('T')[0] : new Date().toISOString().split('T')[0]);
   const [isListening, setIsListening] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [receiptImage, setReceiptImage] = useState<string | null>(initialData?.receiptImage || null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [customCategories, setCustomCategories] = useState<any[]>([]);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -326,6 +331,97 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
     setAmountStr(new Intl.NumberFormat('id-ID').format(parseInt(rawValue, 10)));
   };
 
+  const handleScanReceipt = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsScanning(true);
+    try {
+      // 1. Resize and compress image using Canvas
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = objectUrl;
+      });
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Could not get canvas context');
+
+      // Max width/height 800px
+      const MAX_SIZE = 800;
+      let width = img.width;
+      let height = img.height;
+      if (width > height) {
+        if (width > MAX_SIZE) {
+          height *= MAX_SIZE / width;
+          width = MAX_SIZE;
+        }
+      } else {
+        if (height > MAX_SIZE) {
+          width *= MAX_SIZE / height;
+          height = MAX_SIZE;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Convert to base64 JPEG
+      const base64DataUrl = canvas.toDataURL('image/jpeg', 0.6);
+      const base64Data = base64DataUrl.split(',')[1];
+      
+      setReceiptImage(base64DataUrl);
+      URL.revokeObjectURL(objectUrl);
+
+      // 2. Call Gemini API
+      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY });
+      const prompt = `
+        Analisis struk belanja ini. Ekstrak informasi berikut dalam format JSON:
+        {
+          "amount": number (total belanja, angka saja tanpa titik/koma),
+          "category": string (tebak kategori dari daftar ini: ${[...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES, ...customCategories.map(c => c.name)].join(', ')}. Jika tidak ada yang cocok, gunakan "Lainnya"),
+          "note": string (ringkasan singkat tempat belanja atau barang utama, maksimal 50 karakter)
+        }
+        Hanya kembalikan JSON yang valid.
+      `;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: {
+          parts: [
+            { inlineData: { data: base64Data, mimeType: 'image/jpeg' } },
+            { text: prompt }
+          ]
+        },
+        config: {
+          responseMimeType: 'application/json'
+        }
+      });
+
+      if (response.text) {
+        const data = JSON.parse(response.text);
+        if (data.amount) setAmountStr(new Intl.NumberFormat('id-ID').format(data.amount));
+        if (data.category) {
+          setCategory(data.category);
+          setType(INCOME_CATEGORIES.includes(data.category) ? 'income' : 'expense');
+        }
+        if (data.note) setNote(data.note);
+      }
+    } catch (error) {
+      console.error('Error scanning receipt:', error);
+      alert('Gagal memindai struk. Pastikan gambar jelas dan coba lagi.');
+      setReceiptImage(null);
+    } finally {
+      setIsScanning(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -344,6 +440,7 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
             category,
             note,
             date: new Date(date).toISOString(),
+            ...(receiptImage ? { receiptImage } : { receiptImage: deleteField() }),
           });
         } catch (err) {
           handleFirestoreError(err, OperationType.UPDATE, path);
@@ -361,6 +458,7 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
             createdAt: new Date().toISOString(),
             authorUid: auth.currentUser.uid,
             authorName: auth.currentUser.displayName || auth.currentUser.email || '',
+            ...(receiptImage && { receiptImage }),
           });
         } catch (err) {
           handleFirestoreError(err, OperationType.CREATE, path);
@@ -393,24 +491,52 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
             <div className="flex items-center gap-3">
               <h2 className="text-xl font-semibold text-slate-800">{initialData ? 'Edit Transaksi' : 'Transaksi Baru'}</h2>
               {!initialData && (
-                <button
-                  type="button"
-                  onClick={startListening}
-                  disabled={isListening}
-                  className={cn(
-                    "p-2 rounded-full transition-all relative disabled:opacity-100",
-                    isListening ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                  )}
-                >
-                  {isListening ? (
-                    <>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={startListening}
+                    disabled={isListening || isScanning}
+                    className={cn(
+                      "p-2 rounded-full transition-all relative disabled:opacity-50",
+                      isListening ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                    )}
+                    title="Input Suara"
+                  >
+                    {isListening ? (
+                      <>
+                        <Mic className="w-5 h-5" />
+                        <span className="absolute inset-0 rounded-full bg-rose-400 animate-ping opacity-25" />
+                      </>
+                    ) : (
                       <Mic className="w-5 h-5" />
-                      <span className="absolute inset-0 rounded-full bg-rose-400 animate-ping opacity-25" />
-                    </>
-                  ) : (
-                    <Mic className="w-5 h-5" />
-                  )}
-                </button>
+                    )}
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isListening || isScanning}
+                    className={cn(
+                      "p-2 rounded-full transition-all relative disabled:opacity-50",
+                      isScanning ? "bg-indigo-100 text-indigo-600" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                    )}
+                    title="Scan Struk"
+                  >
+                    {isScanning ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Camera className="w-5 h-5" />
+                    )}
+                  </button>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    ref={fileInputRef}
+                    onChange={handleScanReceipt}
+                    className="hidden"
+                  />
+                </div>
               )}
             </div>
             <button
@@ -457,6 +583,25 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
                 Pengeluaran
               </button>
             </div>
+
+            {/* Receipt Preview */}
+            {receiptImage && (
+              <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-50">
+                <img src={receiptImage} alt="Struk" className="w-full h-32 object-cover opacity-80" />
+                <button
+                  type="button"
+                  onClick={() => setReceiptImage(null)}
+                  className="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur-sm rounded-full text-rose-500 hover:bg-rose-50 transition-colors shadow-sm"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/50 to-transparent p-3">
+                  <p className="text-white text-xs font-medium flex items-center gap-1">
+                    <Check className="w-3 h-3 text-emerald-400" /> Struk berhasil dipindai
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Amount */}
             <div className="space-y-1.5">

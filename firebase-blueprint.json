@@ -47,6 +47,10 @@
         "authorName": {
           "type": "string",
           "description": "Name of the user who created the transaction"
+        },
+        "receiptImage": {
+          "type": "string",
+          "description": "Base64 encoded image of the receipt"
         }
       },
       "required": ["householdId", "type", "amount", "category", "date", "createdAt", "authorUid"]
