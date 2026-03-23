@@ -152,8 +152,8 @@ export function Reports({ householdId }: { householdId: string }) {
         
         {categoryData.length > 0 ? (
           <div className="w-full">
-            <div className="h-[240px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-[240px] w-full min-w-0 min-h-0">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <PieChart>
                   <Pie
                     data={categoryData}
@@ -196,8 +196,8 @@ export function Reports({ householdId }: { householdId: string }) {
           <BarChart3 className="w-5 h-5 text-indigo-600" />
           <h3>Tren Harian</h3>
         </div>
-        <div className="h-[300px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-[300px] w-full min-w-0 min-h-0">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <BarChart data={dailyData}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis 
