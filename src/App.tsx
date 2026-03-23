@@ -6,7 +6,7 @@ import { AuthSetup } from './components/AuthSetup';
 import { Reports } from './components/Reports';
 import { Settings } from './components/Settings';
 import { auth, db, logout, onSnapshot, collection, query, orderBy, setDoc, doc, getDoc } from './firebase';
-import { Plus, Activity, ListOrdered, LogOut, Download, CloudOff, PieChart, Settings as SettingsIcon } from 'lucide-react';
+import { Plus, Activity, ListOrdered, LogOut, Download, CloudOff, PieChart, Settings as SettingsIcon, Share, PlusSquare, X, MoreVertical } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { handleFirestoreError, OperationType } from './lib/firestore-errors';
@@ -22,6 +22,20 @@ export default function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [alertMessage, setAlertMessage] = useState<{title: string, message: string} | null>(null);
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [isIosDevice, setIsIosDevice] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    // Detect iOS
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const isIos = /iphone|ipad|ipod/.test(userAgent);
+    setIsIosDevice(isIos);
+
+    // Detect standalone
+    const isStandAlone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+    setIsStandalone(!!isStandAlone);
+  }, []);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
@@ -161,18 +175,23 @@ export default function App() {
             <Skeleton className="h-8 w-8 rounded-full" />
           ) : (
             <>
-              {deferredPrompt && (
+              {!isStandalone && (
                 <button
                   onClick={async () => {
-                    try {
-                      deferredPrompt.prompt();
-                      const { outcome } = await deferredPrompt.userChoice;
-                      if (outcome === 'accepted') {
+                    if (deferredPrompt) {
+                      try {
+                        deferredPrompt.prompt();
+                        const { outcome } = await deferredPrompt.userChoice;
+                        if (outcome === 'accepted') {
+                          setDeferredPrompt(null);
+                        }
+                      } catch (error) {
+                        console.error('Prompt failed:', error);
                         setDeferredPrompt(null);
                       }
-                    } catch (error) {
-                      console.error('Prompt failed:', error);
-                      setDeferredPrompt(null);
+                    } else {
+                      // If no deferred prompt (e.g. iOS or Chrome where it didn't fire), show manual guide
+                      setShowInstallGuide(true);
                     }
                   }}
                   className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors flex items-center gap-1"
@@ -356,6 +375,83 @@ export default function App() {
                 className="w-full py-3 px-4 bg-slate-900 text-white font-medium rounded-xl hover:bg-slate-800 transition-colors"
               >
                 Tutup
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Install Guide Prompt */}
+        {showInstallGuide && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 backdrop-blur-sm p-4 pb-12"
+            onClick={() => setShowInstallGuide(false)}
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-lg font-bold text-slate-900">Instal Aplikasi</h3>
+                <button onClick={() => setShowInstallGuide(false)} className="p-1 text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-slate-600 text-sm mb-6">
+                Instal aplikasi ini di perangkat Anda untuk akses lebih cepat dan pengalaman layar penuh.
+              </p>
+              
+              {isIosDevice ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-slate-100 p-3 rounded-xl text-slate-700">
+                      <Share className="w-6 h-6" />
+                    </div>
+                    <p className="text-sm text-slate-700">
+                      1. Ketuk ikon <span className="font-bold">Bagikan (Share)</span> di menu bawah browser Anda.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="bg-slate-100 p-3 rounded-xl text-slate-700">
+                      <PlusSquare className="w-6 h-6" />
+                    </div>
+                    <p className="text-sm text-slate-700">
+                      2. Gulir ke bawah dan ketuk <span className="font-bold">"Tambah ke Layar Utama" (Add to Home Screen)</span>.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-slate-100 p-3 rounded-xl text-slate-700">
+                      <MoreVertical className="w-6 h-6" />
+                    </div>
+                    <p className="text-sm text-slate-700">
+                      1. Ketuk ikon <span className="font-bold">Menu (Tiga Titik)</span> di pojok kanan atas browser Anda.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="bg-slate-100 p-3 rounded-xl text-slate-700">
+                      <Download className="w-6 h-6" />
+                    </div>
+                    <p className="text-sm text-slate-700">
+                      2. Pilih <span className="font-bold">"Instal Aplikasi" (Install App)</span> atau <span className="font-bold">"Tambahkan ke Layar Utama"</span>.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={() => setShowInstallGuide(false)}
+                className="w-full mt-8 py-3 px-4 bg-slate-900 text-white font-medium rounded-xl hover:bg-slate-800 transition-colors"
+              >
+                Mengerti
               </button>
             </motion.div>
           </motion.div>
