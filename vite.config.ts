@@ -14,7 +14,7 @@ export default defineConfig(({mode}) => {
         registerType: 'autoUpdate',
         injectRegister: false,
         manifestFilename: 'manifest.json',
-        includeAssets: ['favicon.ico', 'favicon-16x16.png', 'favicon-32x32.png', 'apple-touch-icon.png', 'android-chrome-192x192.png', 'android-chrome-512x512.png'],
+        includeAssets: ['favicon.ico', 'favicon-16x16.png', 'favicon-32x32.png', 'apple-touch-icon.png', 'android-chrome-192x192.png', 'android-chrome-512x512.png', 'icon.svg'],
         manifest: {
           name: 'Personal Finance Tracker',
           short_name: 'Finance',
@@ -26,6 +26,12 @@ export default defineConfig(({mode}) => {
           id: '/',
           prefer_related_applications: false,
           icons: [
+            {
+              src: 'icon.svg',
+              sizes: 'any',
+              type: 'image/svg+xml',
+              purpose: 'any'
+            },
             {
               src: 'android-chrome-192x192.png',
               sizes: '192x192',
