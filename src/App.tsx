@@ -6,7 +6,7 @@ import { AuthSetup } from './components/AuthSetup';
 import { Reports } from './components/Reports';
 import { Settings } from './components/Settings';
 import { auth, db, logout, onSnapshot, collection, query, orderBy, setDoc, doc, getDoc } from './firebase';
-import { Plus, Activity, ListOrdered, LogOut, Download, CloudOff, PieChart, Settings as SettingsIcon, Share, PlusSquare, X, MoreVertical } from 'lucide-react';
+import { Plus, Activity, ListOrdered, LogOut, Download, CloudOff, PieChart, Settings as SettingsIcon, Share, PlusSquare, X, MoreVertical, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { handleFirestoreError, OperationType } from './lib/firestore-errors';
@@ -175,12 +175,19 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-24">
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-slate-50/80 backdrop-blur-md border-b border-slate-200/50 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">Finance</h1>
-          <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold tracking-wider">v1.1.0</span>
-        </div>
-        <div className="flex items-center gap-2 sm:gap-3">
+      <header className="sticky top-0 z-30 border-b border-slate-200/60 bg-slate-50/85 px-6 py-4 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight text-slate-900">Finance</h1>
+              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold tracking-wider text-indigo-700">v1.1.0</span>
+            </div>
+            <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+              <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+              <span>{activeTab === 'dashboard' ? 'Ringkasan cashflow hari ini' : 'Kelola keuangan rumah tangga tanpa ribet'}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3">
           {!isLoaded ? (
             <Skeleton className="h-8 w-8 rounded-full" />
           ) : (
@@ -193,6 +200,7 @@ export default function App() {
               )}
             </>
           )}
+          </div>
         </div>
       </header>
 
@@ -218,8 +226,8 @@ export default function App() {
             onClick={() => setActiveTab('dashboard')}
             disabled={!isLoaded || !householdId}
             className={cn(
-              "flex flex-col items-center p-3 rounded-2xl flex-1 transition-colors",
-              activeTab === 'dashboard' ? "text-slate-900" : "text-slate-400 hover:text-slate-600",
+              "flex flex-1 flex-col items-center rounded-2xl p-3 transition-all duration-200",
+              activeTab === 'dashboard' ? "bg-slate-100 text-slate-900 shadow-sm shadow-slate-200/80" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600",
               (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
             )}
           >
@@ -231,8 +239,8 @@ export default function App() {
             onClick={() => setActiveTab('history')}
             disabled={!isLoaded || !householdId}
             className={cn(
-              "flex flex-col items-center p-3 rounded-2xl flex-1 transition-colors",
-              activeTab === 'history' ? "text-slate-900" : "text-slate-400 hover:text-slate-600",
+              "flex flex-1 flex-col items-center rounded-2xl p-3 transition-all duration-200",
+              activeTab === 'history' ? "bg-slate-100 text-slate-900 shadow-sm shadow-slate-200/80" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600",
               (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
             )}
           >
@@ -247,8 +255,8 @@ export default function App() {
             onClick={() => setActiveTab('reports')}
             disabled={!isLoaded || !householdId}
             className={cn(
-              "flex flex-col items-center p-3 rounded-2xl flex-1 transition-colors",
-              activeTab === 'reports' ? "text-slate-900" : "text-slate-400 hover:text-slate-600",
+              "flex flex-1 flex-col items-center rounded-2xl p-3 transition-all duration-200",
+              activeTab === 'reports' ? "bg-slate-100 text-slate-900 shadow-sm shadow-slate-200/80" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600",
               (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
             )}
           >
@@ -260,8 +268,8 @@ export default function App() {
             onClick={() => setActiveTab('settings')}
             disabled={!isLoaded || !householdId}
             className={cn(
-              "flex flex-col items-center p-3 rounded-2xl flex-1 transition-colors",
-              activeTab === 'settings' ? "text-slate-900" : "text-slate-400 hover:text-slate-600",
+              "flex flex-1 flex-col items-center rounded-2xl p-3 transition-all duration-200",
+              activeTab === 'settings' ? "bg-slate-100 text-slate-900 shadow-sm shadow-slate-200/80" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600",
               (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
             )}
           >
