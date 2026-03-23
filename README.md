@@ -1,20 +1,104 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 💰 Moni — Personal Finance Tracker
 
-# Run and deploy your AI Studio app
+> Simple. Insightful. In Control.
 
-This contains everything you need to run your app locally.
+Moni is a modern personal finance tracking app designed to help you manage your cashflow with clarity and confidence.
 
-View your app in AI Studio: https://ai.studio/apps/fc9cc55d-63cf-4f0c-aba1-8080fec7e395
+---
 
-## Run Locally
+## 📱 Preview
 
-**Prerequisites:**  Node.js
+<p align="center">
+  <img src="./docs/preview-mobile.png" width="320" />
+</p>
 
+---
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## ✨ Features
+
+- 💵 Track income & expenses effortlessly
+- 📊 Real-time cashflow summary
+- 📆 Smart cycle tracking (salary period)
+- ⚡ Clean, fast, and responsive UI
+- 📱 Installable as a PWA (mobile-ready)
+- 🎯 Focused on simplicity & usability
+
+---
+
+## 🧠 Key Concept
+
+Moni is built around **cashflow cycle awareness**:
+
+- Know how much you can safely spend
+- Track progress within your salary cycle
+- Avoid overspending before payday
+
+---
+
+## 🛠 Tech Stack
+
+- **Frontend**: Vue 3 + Vite
+- **Styling**: TailwindCSS
+- **Deployment**: Vercel
+- **PWA**: Service Worker + Web App Manifest
+
+---
+
+## ⚙️ Installation
+
+```bash
+npm install
+```
+
+---
+
+## ▶️ Run Locally
+
+```bash
+npm run dev
+```
+
+---
+
+## 📦 Build
+
+```bash
+npm run build
+```
+
+---
+
+## 🌐 Live Demo
+
+👉 https://moni.vanrezky.web.id
+
+---
+
+## 📱 PWA Support
+
+Moni can be installed like a native app:
+
+- Add to Home Screen
+- Offline support
+- Fast loading experience
+
+---
+
+## 🚀 Deployment
+
+Deployed using Vercel with automatic CI/CD:
+
+- Push to `main` → Production
+- Preview deployments (optional)
+
+---
+
+## 👤 Author
+
+**Van Rezky**
+
+---
+
+## 📄 License
+
+MIT License
