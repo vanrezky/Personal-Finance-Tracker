@@ -25,6 +25,7 @@ export default function App() {
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [isIosDevice, setIsIosDevice] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [showMiniInfoBar, setShowMiniInfoBar] = useState(false);
 
   useEffect(() => {
     // Detect iOS
@@ -35,12 +36,21 @@ export default function App() {
     // Detect standalone
     const isStandAlone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
     setIsStandalone(!!isStandAlone);
+
+    // For iOS, show the mini infobar after a short delay since beforeinstallprompt doesn't fire
+    if (isIos && !isStandAlone) {
+      const timer = setTimeout(() => {
+        setShowMiniInfoBar(true);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
+      setShowMiniInfoBar(true);
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     
@@ -175,33 +185,6 @@ export default function App() {
             <Skeleton className="h-8 w-8 rounded-full" />
           ) : (
             <>
-              {!isStandalone && (
-                <button
-                  onClick={async () => {
-                    if (deferredPrompt) {
-                      try {
-                        deferredPrompt.prompt();
-                        const { outcome } = await deferredPrompt.userChoice;
-                        if (outcome === 'accepted') {
-                          setDeferredPrompt(null);
-                        }
-                      } catch (error) {
-                        console.error('Prompt failed:', error);
-                        setDeferredPrompt(null);
-                      }
-                    } else {
-                      // If no deferred prompt (e.g. iOS or Chrome where it didn't fire), show manual guide
-                      setShowInstallGuide(true);
-                    }
-                  }}
-                  className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors flex items-center gap-1"
-                  title="Instal Aplikasi"
-                >
-                  <Download className="w-4 h-4" />
-                  <span className="text-xs font-semibold">Instal</span>
-                </button>
-              )}
-              
               {!isOnline && (
                 <div className="flex items-center gap-1.5 text-rose-500 bg-rose-50 px-2.5 py-1 rounded-full text-xs font-medium">
                   <CloudOff className="w-3.5 h-3.5" />
@@ -454,6 +437,47 @@ export default function App() {
                 Mengerti
               </button>
             </motion.div>
+          </motion.div>
+        )}
+
+        {/* Custom Mini Infobar mimicking native Chrome */}
+        {showMiniInfoBar && !isStandalone && (deferredPrompt || isIosDevice) && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-0 left-0 right-0 z-50 sm:pb-4 sm:px-4"
+          >
+            <div 
+              className="bg-white border-t sm:border border-slate-200 sm:rounded-xl shadow-[0_-4px_20px_rgba(0,0,0,0.1)] sm:shadow-2xl p-3 flex items-center justify-between cursor-pointer max-w-md mx-auto"
+              onClick={async () => {
+                if (deferredPrompt) {
+                  deferredPrompt.prompt();
+                  const { outcome } = await deferredPrompt.userChoice;
+                  if (outcome === 'accepted') {
+                    setShowMiniInfoBar(false);
+                    setDeferredPrompt(null);
+                  }
+                } else if (isIosDevice) {
+                  setShowInstallGuide(true);
+                  setShowMiniInfoBar(false);
+                }
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <img src="/icon-192.png" alt="Finance" className="w-10 h-10 rounded-full shadow-sm" />
+                <span className="text-slate-800 font-medium text-[15px]">Add Finance to Home Screen</span>
+              </div>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMiniInfoBar(false);
+                }}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
