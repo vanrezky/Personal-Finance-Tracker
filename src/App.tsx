@@ -473,7 +473,7 @@ export default function App() {
               }}
             >
               <div className="flex items-center gap-3">
-                <img src="/icon-192.png" alt="Finance" className="w-10 h-10 rounded-full shadow-sm" />
+                <img src="/android-chrome-192x192.png" alt="Finance" className="w-10 h-10 rounded-full shadow-sm" />
                 <span className="text-slate-800 font-medium text-[15px]">Add Finance to Home Screen</span>
               </div>
               <button 
