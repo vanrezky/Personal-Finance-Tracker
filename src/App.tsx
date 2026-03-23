@@ -1,43 +1,78 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import {
+  Activity,
+  CloudOff,
+  Download,
+  ListOrdered,
+  MoreVertical,
+  PieChart,
+  Plus,
+  PlusSquare,
+  Settings as SettingsIcon,
+  Share,
+  Sparkles,
+  X,
+} from 'lucide-react';
 import { Dashboard } from './components/Dashboard';
 import { TransactionList } from './components/TransactionList';
 import { TransactionForm } from './components/TransactionForm';
 import { AuthSetup } from './components/AuthSetup';
 import { Reports } from './components/Reports';
 import { Settings } from './components/Settings';
-import { auth, db, logout, onSnapshot, collection, query, orderBy, setDoc, doc, getDoc } from './firebase';
-import { Plus, Activity, ListOrdered, LogOut, Download, CloudOff, PieChart, Settings as SettingsIcon, Share, PlusSquare, X, MoreVertical, Sparkles } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { auth, db, logout, onSnapshot, collection, query, orderBy, doc, getDoc } from './firebase';
 import { cn } from './lib/utils';
 import { handleFirestoreError, OperationType } from './lib/firestore-errors';
 import { Skeleton } from './components/Skeleton';
+
+type AppTab = 'dashboard' | 'history' | 'reports' | 'settings';
+
+const tabMeta: Record<AppTab, { label: string; subtitle: string; icon: typeof Activity }> = {
+  dashboard: {
+    label: 'Beranda',
+    subtitle: 'Pantau cashflow dan sorotan pengeluaran hari ini.',
+    icon: Activity,
+  },
+  history: {
+    label: 'Aktivitas',
+    subtitle: 'Riwayat transaksi yang rapi dan mudah difilter.',
+    icon: ListOrdered,
+  },
+  reports: {
+    label: 'Statistik',
+    subtitle: 'Lihat pola pengeluaran tanpa terlalu banyak kartu.',
+    icon: PieChart,
+  },
+  settings: {
+    label: 'Profil',
+    subtitle: 'Atur identitas, payday, dan akses keluarga.',
+    icon: SettingsIcon,
+  },
+};
 
 export default function App() {
   const [householdId, setHouseholdId] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'history' | 'reports' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<AppTab>('dashboard');
   const [isLoaded, setIsLoaded] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [alertMessage, setAlertMessage] = useState<{title: string, message: string} | null>(null);
+  const [alertMessage, setAlertMessage] = useState<{ title: string; message: string } | null>(null);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [isIosDevice, setIsIosDevice] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [showMiniInfoBar, setShowMiniInfoBar] = useState(false);
 
   useEffect(() => {
-    // Detect iOS
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isIos = /iphone|ipad|ipod/.test(userAgent);
     setIsIosDevice(isIos);
 
-    // Detect standalone
     const isStandAlone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
     setIsStandalone(!!isStandAlone);
 
-    // For iOS, show the mini infobar after a short delay since beforeinstallprompt doesn't fire
     if (isIos && !isStandAlone) {
       const timer = setTimeout(() => {
         setShowMiniInfoBar(true);
@@ -52,10 +87,11 @@ export default function App() {
       setDeferredPrompt(e);
       setShowMiniInfoBar(true);
     };
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    
+
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
@@ -69,7 +105,6 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
-        // Fetch user's household
         const path = `users/${user.uid}`;
         try {
           const userDoc = await getDoc(doc(db, path));
@@ -84,8 +119,44 @@ export default function App() {
       }
       setIsLoaded(true);
     });
+
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!householdId) return;
+
+    const path = `households/${householdId}/transactions`;
+    const q = query(collection(db, path), orderBy('createdAt', 'desc'));
+    let isInitialLoad = true;
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        if (isInitialLoad) {
+          isInitialLoad = false;
+          return;
+        }
+
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'added') {
+            const data = change.doc.data();
+            if (auth.currentUser && data.authorUid !== auth.currentUser.uid) {
+              setAlertMessage({
+                title: 'Transaksi baru masuk',
+                message: `${data.authorName} baru menambahkan ${data.type === 'income' ? 'pemasukan' : 'pengeluaran'} Rp ${new Intl.NumberFormat('id-ID').format(data.amount)} pada kategori ${data.category}.`,
+              });
+            }
+          }
+        });
+      },
+      (err) => {
+        handleFirestoreError(err, OperationType.LIST, path);
+      },
+    );
+
+    return () => unsubscribe();
+  }, [householdId]);
 
   const handleLogout = async () => {
     await logout();
@@ -93,55 +164,19 @@ export default function App() {
     setShowLogoutConfirm(false);
   };
 
-  useEffect(() => {
-    if (!householdId) return;
-
-    const path = `households/${householdId}/transactions`;
-    const q = query(
-      collection(db, path),
-      orderBy('createdAt', 'desc')
-    );
-
-    let isInitialLoad = true;
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (isInitialLoad) {
-        isInitialLoad = false;
-        return;
-      }
-
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === 'added') {
-          const data = change.doc.data();
-          if (auth.currentUser && data.authorUid !== auth.currentUser.uid) {
-            setAlertMessage({
-              title: 'Transaksi Baru',
-              message: `${data.authorName} baru saja menambahkan transaksi ${data.type === 'income' ? 'pemasukan' : 'pengeluaran'} sebesar Rp ${new Intl.NumberFormat('id-ID').format(data.amount)} untuk ${data.category}.`
-            });
-          }
-        }
-      });
-    }, (err) => {
-      handleFirestoreError(err, OperationType.LIST, path);
-    });
-
-    return () => unsubscribe();
-  }, [householdId]);
+  const activeTabMeta = tabMeta[activeTab];
+  const ActiveIcon = activeTabMeta.icon;
 
   const renderContent = () => {
     if (!isLoaded) {
       return (
         <div className="space-y-6">
-          <Skeleton className="h-32 w-full rounded-3xl" />
+          <Skeleton className="h-40 w-full rounded-[32px]" />
           <div className="grid grid-cols-2 gap-4">
-            <Skeleton className="h-24 w-full rounded-3xl" />
-            <Skeleton className="h-24 w-full rounded-3xl" />
+            <Skeleton className="h-28 w-full rounded-[28px]" />
+            <Skeleton className="h-28 w-full rounded-[28px]" />
           </div>
-          <div className="space-y-4">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-20 w-full rounded-2xl" />
-            <Skeleton className="h-20 w-full rounded-2xl" />
-          </div>
+          <Skeleton className="h-72 w-full rounded-[32px]" />
         </div>
       );
     }
@@ -155,12 +190,12 @@ export default function App() {
         return <Dashboard householdId={householdId} />;
       case 'history':
         return (
-          <TransactionList 
-            householdId={householdId} 
+          <TransactionList
+            householdId={householdId}
             onEdit={(transaction) => {
               setEditingTransaction(transaction);
               setIsFormOpen(true);
-            }} 
+            }}
           />
         );
       case 'reports':
@@ -173,211 +208,177 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-24">
-      {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-slate-200/60 bg-slate-50/85 px-6 py-4 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">Finance</h1>
-              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold tracking-wider text-indigo-700">v1.1.0</span>
-            </div>
-            <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
-              <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
-              <span>{activeTab === 'dashboard' ? 'Ringkasan cashflow hari ini' : 'Kelola keuangan rumah tangga tanpa ribet'}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-          {!isLoaded ? (
-            <Skeleton className="h-8 w-8 rounded-full" />
-          ) : (
-            <>
-              {!isOnline && (
-                <div className="flex items-center gap-1.5 text-rose-500 bg-rose-50 px-2.5 py-1 rounded-full text-xs font-medium">
-                  <CloudOff className="w-3.5 h-3.5" />
-                  <span>Offline</span>
+    <div className="relative min-h-screen overflow-hidden px-4 pb-28 pt-4 text-slate-900 sm:px-6 sm:pt-6">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -left-20 top-12 h-48 w-48 rounded-full bg-pink-200/50 blur-3xl" />
+        <div className="absolute right-0 top-0 h-56 w-56 rounded-full bg-amber-200/40 blur-3xl" />
+        <div className="absolute bottom-24 left-1/3 h-64 w-64 rounded-full bg-indigo-200/40 blur-3xl" />
+      </div>
+
+      <div className="relative mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[430px] flex-col rounded-[36px] border border-white/60 bg-white/45 shadow-[0_30px_120px_rgba(99,102,241,0.18)] backdrop-blur-2xl">
+        <header className="sticky top-0 z-30 rounded-t-[36px] border-b border-white/60 bg-white/55 px-5 py-5 backdrop-blur-xl">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-gradient-to-r from-indigo-500 to-pink-400 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-white">
+                  Monity ID
+                </span>
+                {!isLoaded ? null : !isOnline ? (
+                  <span className="flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-500">
+                    <CloudOff className="h-3.5 w-3.5" /> Offline
+                  </span>
+                ) : null}
+              </div>
+              <div className="mt-4 flex items-center gap-2 text-slate-900">
+                <div className="rounded-2xl bg-indigo-100 p-2.5 text-indigo-600">
+                  <ActiveIcon className="h-4.5 w-4.5" />
                 </div>
-              )}
-            </>
-          )}
+                <div>
+                  <h1 className="text-xl font-bold tracking-tight">{householdId ? activeTabMeta.label : 'Cara mudah pantau pengeluaran'}</h1>
+                  <p className="mt-0.5 text-sm text-slate-500">{householdId ? activeTabMeta.subtitle : 'Desain baru yang lebih ringan, fokus, dan tetap informatif.'}</p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-[22px] bg-white/80 px-3 py-2 text-right shadow-sm">
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">versi</p>
+              <p className="text-sm font-semibold text-slate-700">1.1.0</p>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Content */}
-      <main className="px-6 py-8 max-w-2xl mx-auto">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={isLoaded ? activeTab : 'loading'}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-          >
-            {renderContent()}
-          </motion.div>
-        </AnimatePresence>
-      </main>
+        <main className="flex-1 px-5 py-5">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={isLoaded ? (householdId ? activeTab : 'auth') : 'loading'}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.24 }}
+            >
+              {renderContent()}
+            </motion.div>
+          </AnimatePresence>
+        </main>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200/50 pb-safe">
-        <div className="flex items-center justify-around p-2 max-w-md mx-auto relative">
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            disabled={!isLoaded || !householdId}
-            className={cn(
-              "flex flex-1 flex-col items-center rounded-2xl p-3 transition-all duration-200",
-              activeTab === 'dashboard' ? "bg-slate-100 text-slate-900 shadow-sm shadow-slate-200/80" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600",
-              (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            <Activity className="w-6 h-6 mb-1" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider">Dashboard</span>
-          </button>
+        <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[430px] px-4 pb-4">
+          <div className="relative rounded-[28px] border border-white/70 bg-white/90 px-2 pb-2 pt-3 shadow-[0_18px_50px_rgba(15,23,42,0.12)] backdrop-blur-xl">
+            <div className="grid grid-cols-5 items-end gap-1">
+              {([
+                ['dashboard', Activity],
+                ['history', ListOrdered],
+                ['spacer', Plus],
+                ['reports', PieChart],
+                ['settings', SettingsIcon],
+              ] as const).map(([tab, Icon]) => {
+                if (tab === 'spacer') {
+                  return <div key={tab} className="h-12" />;
+                }
 
-          <button
-            onClick={() => setActiveTab('history')}
-            disabled={!isLoaded || !householdId}
-            className={cn(
-              "flex flex-1 flex-col items-center rounded-2xl p-3 transition-all duration-200",
-              activeTab === 'history' ? "bg-slate-100 text-slate-900 shadow-sm shadow-slate-200/80" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600",
-              (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            <ListOrdered className="w-6 h-6 mb-1" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider">Riwayat</span>
-          </button>
+                const meta = tabMeta[tab as AppTab];
+                const isActive = activeTab === tab;
 
-          {/* Floating Action Button Placeholder for spacing */}
-          <div className="w-16" />
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab as AppTab)}
+                    disabled={!isLoaded || !householdId}
+                    className={cn(
+                      'flex flex-col items-center gap-1 rounded-[20px] px-2 py-2.5 text-[10px] font-semibold transition-all',
+                      isActive ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700',
+                      (!isLoaded || !householdId) && 'cursor-not-allowed opacity-50',
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span>{meta.label}</span>
+                  </button>
+                );
+              })}
+            </div>
 
-          <button
-            onClick={() => setActiveTab('reports')}
-            disabled={!isLoaded || !householdId}
-            className={cn(
-              "flex flex-1 flex-col items-center rounded-2xl p-3 transition-all duration-200",
-              activeTab === 'reports' ? "bg-slate-100 text-slate-900 shadow-sm shadow-slate-200/80" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600",
-              (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            <PieChart className="w-6 h-6 mb-1" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider">Laporan</span>
-          </button>
+            <button
+              onClick={() => {
+                setEditingTransaction(null);
+                setIsFormOpen(true);
+              }}
+              disabled={!isLoaded || !householdId}
+              className={cn(
+                'absolute left-1/2 top-0 flex h-14 w-14 -translate-x-1/2 -translate-y-1/3 items-center justify-center rounded-[22px] bg-gradient-to-br from-pink-400 to-pink-500 text-white shadow-[0_16px_40px_rgba(244,114,182,0.35)] transition hover:scale-105 active:scale-95',
+                (!isLoaded || !householdId) && 'cursor-not-allowed opacity-50',
+              )}
+            >
+              <Plus className="h-7 w-7" />
+            </button>
+          </div>
+        </nav>
+      </div>
 
-          <button
-            onClick={() => setActiveTab('settings')}
-            disabled={!isLoaded || !householdId}
-            className={cn(
-              "flex flex-1 flex-col items-center rounded-2xl p-3 transition-all duration-200",
-              activeTab === 'settings' ? "bg-slate-100 text-slate-900 shadow-sm shadow-slate-200/80" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600",
-              (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            <SettingsIcon className="w-6 h-6 mb-1" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider">Pengaturan</span>
-          </button>
-
-          {/* Floating Action Button */}
-          <button
-            onClick={() => {
-              setEditingTransaction(null);
-              setIsFormOpen(true);
-            }}
-            disabled={!isLoaded || !householdId}
-            className={cn(
-              "absolute left-1/2 -top-6 -translate-x-1/2 bg-slate-900 text-white p-4 rounded-full shadow-xl shadow-slate-900/20 hover:scale-105 active:scale-95 transition-all",
-              (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            <Plus className="w-8 h-8" />
-          </button>
-        </div>
-      </nav>
-
-      {/* Transaction Form Modal */}
       {isFormOpen && (
-        <TransactionForm 
-          householdId={householdId} 
+        <TransactionForm
+          householdId={householdId}
           onClose={() => {
             setIsFormOpen(false);
             setEditingTransaction(null);
-          }} 
+          }}
           initialData={editingTransaction}
         />
       )}
 
-      {/* Logout Confirmation Modal */}
       <AnimatePresence>
         {showLogoutConfirm && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl"
+              className="w-full max-w-sm rounded-[28px] bg-white p-6 shadow-2xl"
             >
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Keluar Akun?</h3>
-              <p className="text-slate-500 text-sm mb-6">
-                Anda akan keluar dari aplikasi. Data Anda tetap aman di cloud.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowLogoutConfirm(false)}
-                  className="flex-1 py-3 px-4 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors"
-                >
+              <h3 className="text-lg font-bold text-slate-900">Keluar dari akun?</h3>
+              <p className="mt-2 text-sm text-slate-500">Tenang, semua data keluarga tetap tersimpan di cloud dan bisa diakses lagi kapan saja.</p>
+              <div className="mt-6 flex gap-3">
+                <button onClick={() => setShowLogoutConfirm(false)} className="flex-1 rounded-2xl bg-slate-100 px-4 py-3 font-medium text-slate-700">
                   Batal
                 </button>
-                <button
-                  onClick={handleLogout}
-                  className="flex-1 py-3 px-4 bg-rose-600 text-white font-medium rounded-xl hover:bg-rose-700 transition-colors"
-                >
-                  Ya, Keluar
+                <button onClick={handleLogout} className="flex-1 rounded-2xl bg-rose-500 px-4 py-3 font-medium text-white">
+                  Ya, keluar
                 </button>
               </div>
             </motion.div>
           </motion.div>
         )}
 
-        {/* Alert Modal */}
         {alertMessage && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl"
+              className="w-full max-w-sm rounded-[28px] bg-white p-6 shadow-2xl"
             >
-              <h3 className="text-lg font-bold text-slate-900 mb-2">{alertMessage.title}</h3>
-              <p className="text-slate-500 text-sm mb-6 whitespace-pre-wrap">
-                {alertMessage.message}
-              </p>
-              <button
-                onClick={() => setAlertMessage(null)}
-                className="w-full py-3 px-4 bg-slate-900 text-white font-medium rounded-xl hover:bg-slate-800 transition-colors"
-              >
+              <h3 className="text-lg font-bold text-slate-900">{alertMessage.title}</h3>
+              <p className="mt-2 whitespace-pre-wrap text-sm text-slate-500">{alertMessage.message}</p>
+              <button onClick={() => setAlertMessage(null)} className="mt-6 w-full rounded-2xl bg-slate-900 px-4 py-3 font-medium text-white">
                 Tutup
               </button>
             </motion.div>
           </motion.div>
         )}
 
-        {/* Install Guide Prompt */}
         {showInstallGuide && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 backdrop-blur-sm p-4 pb-12"
+            className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-4 pb-12 backdrop-blur-sm"
             onClick={() => setShowInstallGuide(false)}
           >
             <motion.div
@@ -385,79 +386,53 @@ export default function App() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl"
+              className="w-full max-w-sm rounded-[28px] bg-white p-6 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-bold text-slate-900">Instal Aplikasi</h3>
-                <button onClick={() => setShowInstallGuide(false)} className="p-1 text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full">
-                  <X className="w-5 h-5" />
+              <div className="mb-4 flex items-start justify-between">
+                <h3 className="text-lg font-bold text-slate-900">Instal aplikasi</h3>
+                <button onClick={() => setShowInstallGuide(false)} className="rounded-full bg-slate-100 p-2 text-slate-500">
+                  <X className="h-5 w-5" />
                 </button>
               </div>
-              <p className="text-slate-600 text-sm mb-6">
-                Instal aplikasi ini di perangkat Anda untuk akses lebih cepat dan pengalaman layar penuh.
-              </p>
-              
+              <p className="mb-6 text-sm text-slate-600">Tambahkan aplikasi ini ke home screen supaya pengalaman terasa lebih cepat dan mirip aplikasi native.</p>
+
               {isIosDevice ? (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-4">
-                    <div className="bg-slate-100 p-3 rounded-xl text-slate-700">
-                      <Share className="w-6 h-6" />
-                    </div>
-                    <p className="text-sm text-slate-700">
-                      1. Ketuk ikon <span className="font-bold">Bagikan (Share)</span> di menu bawah browser Anda.
-                    </p>
+                  <div className="flex items-center gap-4 rounded-2xl bg-slate-50 p-4">
+                    <div className="rounded-2xl bg-white p-3 text-slate-700 shadow-sm"><Share className="h-5 w-5" /></div>
+                    <p className="text-sm text-slate-700">1. Ketuk tombol <span className="font-semibold">Bagikan</span> pada browser.</p>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <div className="bg-slate-100 p-3 rounded-xl text-slate-700">
-                      <PlusSquare className="w-6 h-6" />
-                    </div>
-                    <p className="text-sm text-slate-700">
-                      2. Gulir ke bawah dan ketuk <span className="font-bold">"Tambah ke Layar Utama" (Add to Home Screen)</span>.
-                    </p>
+                  <div className="flex items-center gap-4 rounded-2xl bg-slate-50 p-4">
+                    <div className="rounded-2xl bg-white p-3 text-slate-700 shadow-sm"><PlusSquare className="h-5 w-5" /></div>
+                    <p className="text-sm text-slate-700">2. Pilih <span className="font-semibold">Tambah ke Layar Utama</span>.</p>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-4">
-                    <div className="bg-slate-100 p-3 rounded-xl text-slate-700">
-                      <MoreVertical className="w-6 h-6" />
-                    </div>
-                    <p className="text-sm text-slate-700">
-                      1. Ketuk ikon <span className="font-bold">Menu (Tiga Titik)</span> di pojok kanan atas browser Anda.
-                    </p>
+                  <div className="flex items-center gap-4 rounded-2xl bg-slate-50 p-4">
+                    <div className="rounded-2xl bg-white p-3 text-slate-700 shadow-sm"><MoreVertical className="h-5 w-5" /></div>
+                    <p className="text-sm text-slate-700">1. Buka menu browser di pojok kanan atas.</p>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <div className="bg-slate-100 p-3 rounded-xl text-slate-700">
-                      <Download className="w-6 h-6" />
-                    </div>
-                    <p className="text-sm text-slate-700">
-                      2. Pilih <span className="font-bold">"Instal Aplikasi" (Install App)</span> atau <span className="font-bold">"Tambahkan ke Layar Utama"</span>.
-                    </p>
+                  <div className="flex items-center gap-4 rounded-2xl bg-slate-50 p-4">
+                    <div className="rounded-2xl bg-white p-3 text-slate-700 shadow-sm"><Download className="h-5 w-5" /></div>
+                    <p className="text-sm text-slate-700">2. Pilih <span className="font-semibold">Instal Aplikasi</span> atau <span className="font-semibold">Tambahkan ke Layar Utama</span>.</p>
                   </div>
                 </div>
               )}
-
-              <button
-                onClick={() => setShowInstallGuide(false)}
-                className="w-full mt-8 py-3 px-4 bg-slate-900 text-white font-medium rounded-xl hover:bg-slate-800 transition-colors"
-              >
-                Mengerti
-              </button>
             </motion.div>
           </motion.div>
         )}
 
-        {/* Custom Mini Infobar mimicking native Chrome */}
         {showMiniInfoBar && !isStandalone && (deferredPrompt || isIosDevice) && (
           <motion.div
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-0 left-0 right-0 z-50 sm:pb-4 sm:px-4"
+            className="fixed inset-x-0 bottom-3 z-50 mx-auto w-full max-w-[430px] px-4"
           >
-            <div 
-              className="bg-white border-t sm:border border-slate-200 sm:rounded-xl shadow-[0_-4px_20px_rgba(0,0,0,0.1)] sm:shadow-2xl p-3 flex items-center justify-between cursor-pointer max-w-md mx-auto"
+            <div
+              className="flex cursor-pointer items-center justify-between rounded-[24px] border border-white/70 bg-white/95 p-3 shadow-[0_14px_40px_rgba(15,23,42,0.14)]"
               onClick={async () => {
                 if (deferredPrompt) {
                   deferredPrompt.prompt();
@@ -473,17 +448,20 @@ export default function App() {
               }}
             >
               <div className="flex items-center gap-3">
-                <img src="/android-chrome-192x192.png" alt="Finance" className="w-10 h-10 rounded-full shadow-sm" />
-                <span className="text-slate-800 font-medium text-[15px]">Add Finance to Home Screen</span>
+                <img src="/android-chrome-192x192.png" alt="Monity ID" className="h-10 w-10 rounded-2xl shadow-sm" />
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Pasang Monity ID</p>
+                  <p className="text-xs text-slate-500">Akses lebih cepat dari layar utama.</p>
+                </div>
               </div>
-              <button 
+              <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowMiniInfoBar(false);
                 }}
-                className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100"
+                className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
               >
-                <X className="w-5 h-5" />
+                <X className="h-5 w-5" />
               </button>
             </div>
           </motion.div>

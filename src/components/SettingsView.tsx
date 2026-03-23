@@ -19,152 +19,112 @@ interface SettingsViewProps {
 
 export function SettingsSkeleton() {
   return (
-    <div className="space-y-6">
-      <div className="space-y-6 rounded-3xl border border-slate-100 bg-white p-6">
-        <Skeleton className="h-7 w-32" />
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-12 w-full rounded-2xl" />
-        </div>
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-12 w-full rounded-2xl" />
-        </div>
-        <Skeleton className="h-14 w-full rounded-2xl" />
-      </div>
-      <Skeleton className="h-40 w-full rounded-3xl" />
+    <div className="space-y-5">
+      <Skeleton className="h-56 w-full rounded-[32px]" />
+      <Skeleton className="h-40 w-full rounded-[32px]" />
+      <Skeleton className="h-16 w-full rounded-[28px]" />
     </div>
   );
 }
 
-function SettingsFormSection({
+export function SettingsView({
   displayName,
   payday,
+  householdId,
   isOwner,
   saving,
   success,
+  copied,
   onDisplayNameChange,
   onPaydayChange,
   onSave,
-}: Omit<SettingsViewProps, 'householdId' | 'copied' | 'onCopyHouseholdId' | 'onLogout'>) {
+  onCopyHouseholdId,
+  onLogout,
+}: SettingsViewProps) {
   return (
-    <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
-      <h2 className="mb-6 text-xl font-bold text-slate-900">Pengaturan</h2>
+    <div className="space-y-5 pb-8">
+      <section className="rounded-[32px] border border-white/70 bg-white/90 p-5 shadow-[0_18px_60px_rgba(148,163,184,0.16)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-indigo-400">Profil</p>
+        <h2 className="mt-1 text-xl font-bold text-slate-900">Atur identitas dan siklus gajian</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-500">Bagian ini dibuat lebih ringkas supaya pengaturan yang benar-benar penting mudah ditemukan.</p>
 
-      <form onSubmit={onSave} className="space-y-6">
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-            <User className="h-4 w-4 text-indigo-600" />
-            Nama Tampilan
+        <form onSubmit={onSave} className="mt-5 space-y-4">
+          <label className="block space-y-2">
+            <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
+              <User className="h-4 w-4 text-indigo-500" /> Nama tampilan
+            </span>
+            <input
+              type="text"
+              required
+              value={displayName}
+              onChange={(event) => onDisplayNameChange(event.target.value)}
+              className="w-full rounded-[22px] bg-slate-50 px-4 py-4 text-slate-900 outline-none transition focus:ring-2 focus:ring-indigo-400"
+            />
           </label>
-          <input
-            type="text"
-            required
-            value={displayName}
-            onChange={(event) => onDisplayNameChange(event.target.value)}
-            className="w-full rounded-2xl border-none bg-slate-50 px-4 py-3 text-slate-900 transition-shadow focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
 
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-            <Calendar className="h-4 w-4 text-indigo-600" />
-            Tanggal Gajian
+          <label className="block space-y-2">
+            <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
+              <Calendar className="h-4 w-4 text-pink-500" /> Tanggal payday
+            </span>
+            <input
+              type="number"
+              min="1"
+              max="31"
+              required
+              disabled={!isOwner}
+              value={payday}
+              onChange={(event) => onPaydayChange(event.target.value)}
+              className={cn('w-full rounded-[22px] bg-slate-50 px-4 py-4 text-slate-900 outline-none transition focus:ring-2 focus:ring-indigo-400', !isOwner && 'cursor-not-allowed opacity-60')}
+            />
+            <p className="text-xs leading-5 text-slate-500">
+              Dashboard akan memakai tanggal ini sebagai awal siklus bulanan.
+              {!isOwner ? ' Saat ini hanya pemilik ruang keuangan yang bisa mengubahnya.' : ''}
+            </p>
           </label>
-          <p className="mb-1 text-[10px] text-slate-500">
-            Siklus bulanan di Dashboard akan dimulai dari tanggal ini.
-            {!isOwner && (
-              <span className="mt-1 block font-medium text-rose-500">
-                * Hanya pemilik (pembuat ID) yang bisa mengubah tanggal gajian.
-              </span>
+
+          <button type="submit" disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-[22px] bg-slate-900 px-4 py-4 font-semibold text-white disabled:opacity-60">
+            {saving ? (
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+            ) : success ? (
+              <>
+                <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                Tersimpan
+              </>
+            ) : (
+              <>
+                <Save className="h-5 w-5" />
+                Simpan perubahan
+              </>
             )}
-          </p>
-          <input
-            type="number"
-            min="1"
-            max="31"
-            required
-            disabled={!isOwner}
-            value={payday}
-            onChange={(event) => onPaydayChange(event.target.value)}
-            className={cn(
-              'w-full rounded-2xl border-none bg-slate-50 px-4 py-3 text-slate-900 transition-shadow focus:ring-2 focus:ring-indigo-500',
-              !isOwner && 'cursor-not-allowed opacity-60'
-            )}
-          />
+          </button>
+        </form>
+      </section>
+
+      <section className="rounded-[32px] border border-white/70 bg-white/90 p-5 shadow-[0_18px_60px_rgba(148,163,184,0.16)]">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pink-400">Family access</p>
+            <h3 className="mt-1 text-lg font-bold text-slate-900">ID ruang keuangan</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-500">Bagikan ID ini jika ingin menghubungkan pasangan atau anggota keluarga lain ke data yang sama.</p>
+          </div>
+          <div className="rounded-[20px] bg-pink-50 p-3 text-pink-500">
+            <Users className="h-5 w-5" />
+          </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={saving}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 py-4 font-semibold text-white transition-all hover:bg-slate-800 active:scale-[0.98]"
-        >
-          {saving ? (
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-          ) : success ? (
-            <>
-              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-              Tersimpan
-            </>
-          ) : (
-            <>
-              <Save className="h-5 w-5" />
-              Simpan Perubahan
-            </>
-          )}
-        </button>
-      </form>
-    </div>
-  );
-}
-
-function HouseholdShareCard({ householdId, copied, onCopyHouseholdId }: Pick<SettingsViewProps, 'householdId' | 'copied' | 'onCopyHouseholdId'>) {
-  return (
-    <div className="rounded-3xl border border-indigo-100 bg-indigo-50 p-6">
-      <div className="mb-2 flex items-center gap-2 font-bold text-indigo-700">
-        <Users className="h-5 w-5" />
-        <h3>ID Keuangan Keluarga</h3>
-      </div>
-      <p className="mb-4 text-xs text-indigo-600/70">
-        Bagikan ID ini kepada pasangan Anda agar mereka dapat bergabung dan melihat catatan keuangan yang sama.
-      </p>
-      <div className="flex items-center gap-2">
-        <div className="flex-1 rounded-2xl border border-indigo-200 bg-white p-4 text-center font-mono font-bold tracking-widest text-slate-900">
-          {householdId}
+        <div className="mt-5 flex items-center gap-3">
+          <div className="flex-1 rounded-[22px] bg-slate-50 px-4 py-4 text-center font-mono text-sm font-bold uppercase tracking-[0.24em] text-slate-800">
+            {householdId}
+          </div>
+          <button onClick={onCopyHouseholdId} className="rounded-[22px] bg-slate-900 p-4 text-white transition hover:bg-slate-800" title="Salin ID">
+            {copied ? <CheckCircle2 className="h-5 w-5 text-emerald-300" /> : <Copy className="h-5 w-5" />}
+          </button>
         </div>
-        <button
-          onClick={onCopyHouseholdId}
-          className="relative rounded-2xl border border-indigo-200 bg-white p-4 text-indigo-600 transition-colors hover:bg-indigo-50"
-          title="Salin ID"
-        >
-          {copied ? <CheckCircle2 className="h-6 w-6 text-emerald-500" /> : <Copy className="h-6 w-6" />}
-        </button>
-      </div>
-    </div>
-  );
-}
+      </section>
 
-function SettingsFooter({ onLogout }: Pick<SettingsViewProps, 'onLogout'>) {
-  return (
-    <div className="pt-4">
-      <button
-        onClick={onLogout}
-        className="flex w-full items-center justify-center gap-2 rounded-3xl border border-rose-100 bg-rose-50 px-6 py-4 font-bold text-rose-600 transition-colors hover:bg-rose-100"
-      >
-        <LogOut className="h-5 w-5" />
-        Keluar dari Akun
+      <button onClick={onLogout} className="flex w-full items-center justify-center gap-2 rounded-[28px] border border-rose-100 bg-rose-50 px-6 py-4 font-semibold text-rose-600 shadow-sm">
+        <LogOut className="h-5 w-5" /> Keluar dari akun
       </button>
-      <p className="mt-4 text-center text-[10px] text-slate-400">Finance Sync v1.0.0</p>
-    </div>
-  );
-}
-
-export function SettingsView(props: SettingsViewProps) {
-  return (
-    <div className="space-y-6">
-      <SettingsFormSection {...props} />
-      <HouseholdShareCard householdId={props.householdId} copied={props.copied} onCopyHouseholdId={props.onCopyHouseholdId} />
-      <SettingsFooter onLogout={props.onLogout} />
     </div>
   );
 }

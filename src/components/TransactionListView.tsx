@@ -6,7 +6,6 @@ import {
   Clock,
   FileText,
   Filter,
-  Image as ImageIcon,
   Receipt,
   Tag,
   Trash2,
@@ -48,29 +47,16 @@ interface TransactionListViewProps {
 
 export function TransactionListSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      <Skeleton className="h-28 w-full rounded-[28px]" />
       {[1, 2, 3].map((item) => (
-        <div key={item} className="space-y-3">
-          <Skeleton className="ml-1 h-4 w-24" />
-          <div className="space-y-4 rounded-3xl border border-slate-100 bg-white p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Skeleton className="h-12 w-12 rounded-2xl" />
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-3 w-20" />
-                </div>
-              </div>
-              <Skeleton className="h-6 w-24" />
-            </div>
-          </div>
-        </div>
+        <Skeleton key={item} className="h-28 w-full rounded-[28px]" />
       ))}
     </div>
   );
 }
 
-function TransactionFilterPanel({
+function FilterPanel({
   filters,
   uniqueCategories,
   onCategoryFilterChange,
@@ -83,57 +69,36 @@ function TransactionFilterPanel({
   return (
     <AnimatePresence>
       {filters.showFilters && (
-        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-          <div className="mb-2 space-y-4 rounded-3xl border border-slate-100 bg-white p-4 shadow-sm">
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-700">Filter Data</h3>
-              {hasActiveFilters && (
-                <button onClick={onResetFilters} className="flex items-center gap-1 text-xs font-medium text-rose-500 hover:text-rose-600">
-                  <X className="h-3 w-3" /> Reset
+        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+          <div className="rounded-[28px] border border-white/70 bg-white/90 p-4 shadow-[0_18px_60px_rgba(148,163,184,0.16)]">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-900">Filter riwayat</h3>
+              {hasActiveFilters ? (
+                <button onClick={onResetFilters} className="text-xs font-semibold text-rose-500">
+                  Reset
                 </button>
-              )}
+              ) : null}
             </div>
-
             <div className="space-y-3">
-              <div className="space-y-1.5">
-                <label className="px-1 text-xs font-medium text-slate-500">Kategori</label>
-                <select
-                  value={filters.category}
-                  onChange={(event) => onCategoryFilterChange(event.target.value)}
-                  className="w-full rounded-xl border-none bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">Semua Kategori</option>
+              <label className="block space-y-2 text-sm font-medium text-slate-700">
+                <span>Kategori</span>
+                <select value={filters.category} onChange={(event) => onCategoryFilterChange(event.target.value)} className="w-full rounded-[20px] bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:ring-2 focus:ring-indigo-400">
+                  <option value="">Semua kategori</option>
                   {uniqueCategories.filter(Boolean).map((category) => (
                     <option key={category} value={category}>{category}</option>
                   ))}
                 </select>
-              </div>
-
+              </label>
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="px-1 text-xs font-medium text-slate-500">Dari Tanggal</label>
-                  <input
-                    type="date"
-                    value={filters.startDate}
-                    onChange={(event) => onStartDateFilterChange(event.target.value)}
-                    className="w-full rounded-xl border-none bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="px-1 text-xs font-medium text-slate-500">Sampai Tanggal</label>
-                  <input
-                    type="date"
-                    value={filters.endDate}
-                    onChange={(event) => onEndDateFilterChange(event.target.value)}
-                    disabled={!filters.startDate}
-                    min={filters.startDate}
-                    className="w-full rounded-xl border-none bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
-                  />
-                </div>
+                <label className="block space-y-2 text-sm font-medium text-slate-700">
+                  <span>Dari</span>
+                  <input type="date" value={filters.startDate} onChange={(event) => onStartDateFilterChange(event.target.value)} className="w-full rounded-[20px] bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:ring-2 focus:ring-indigo-400" />
+                </label>
+                <label className="block space-y-2 text-sm font-medium text-slate-700">
+                  <span>Sampai</span>
+                  <input type="date" value={filters.endDate} min={filters.startDate} disabled={!filters.startDate} onChange={(event) => onEndDateFilterChange(event.target.value)} className="w-full rounded-[20px] bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:ring-2 focus:ring-indigo-400 disabled:opacity-50" />
+                </label>
               </div>
-              {!filters.startDate && (
-                <p className="px-1 text-[10px] italic text-slate-400">* Pilih 'Dari Tanggal' terlebih dahulu untuk mengatur 'Sampai Tanggal'.</p>
-              )}
             </div>
           </div>
         </motion.div>
@@ -142,199 +107,132 @@ function TransactionFilterPanel({
   );
 }
 
-function TransactionRow({
-  item,
-  isLast,
-  onViewDetail,
-  onViewReceipt,
-  onRequestDelete,
-  onEdit,
-}: {
-  item: TransactionRecord;
-  isLast: boolean;
-  onViewDetail: (transaction: TransactionRecord) => void;
-  onViewReceipt: (receipt: string | null) => void;
-  onRequestDelete: (id: string | null) => void;
-  onEdit: (transaction: TransactionRecord) => void;
-}) {
+function TransactionRow({ item, isLast, onViewDetail, onViewReceipt, onRequestDelete, onEdit }: { item: TransactionRecord; isLast: boolean; onViewDetail: (transaction: TransactionRecord) => void; onViewReceipt: (receipt: string | null) => void; onRequestDelete: (id: string | null) => void; onEdit: (transaction: TransactionRecord) => void }) {
   return (
-    <div
-      className={cn(
-        'flex cursor-pointer items-center justify-between p-3 transition-colors hover:bg-slate-50 sm:p-4',
-        !isLast && 'border-b border-slate-50'
-      )}
+    <button
+      type="button"
       onClick={() => onViewDetail(item)}
+      className={cn('flex w-full items-center justify-between gap-3 px-4 py-4 text-left transition hover:bg-slate-50', !isLast && 'border-b border-slate-100')}
     >
-      <div className="flex items-center gap-3 overflow-hidden sm:gap-4">
-        <div className={cn('flex shrink-0 items-center justify-center rounded-xl p-2.5 sm:rounded-2xl sm:p-3', item.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600')}>
-          {item.type === 'income' ? <ArrowDownRight className="h-4 w-4 sm:h-5 sm:w-5" /> : <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5" />}
+      <div className="flex min-w-0 items-center gap-3">
+        <div className={cn('rounded-[18px] p-3', item.type === 'income' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-600')}>
+          {item.type === 'income' ? <ArrowDownRight className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
         </div>
-        <div className="min-w-0 flex-col justify-center">
-          <p className="truncate text-sm font-medium leading-tight text-slate-900 sm:text-base">{item.category}</p>
-          {item.note && (
-            <p className="mt-1 flex items-center gap-1 truncate text-[10px] text-slate-500 sm:text-xs">
-              <Tag className="h-2.5 w-2.5 shrink-0 sm:h-3 sm:w-3" />
-              <span className="truncate">{item.note}</span>
-            </p>
-          )}
-          <p className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-slate-400 sm:text-xs">
-            <User className="h-2.5 w-2.5 shrink-0 sm:h-3 sm:w-3" />
-            <span className="truncate">{item.authorName && item.authorName !== 'Unknown' ? item.authorName : '-'}</span>
-          </p>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-slate-900">{item.category}</p>
+          <p className="mt-1 truncate text-xs text-slate-500">{item.note || 'Tanpa catatan tambahan'}</p>
+          <p className="mt-1 text-[11px] text-slate-400">{item.authorName && item.authorName !== 'Unknown' ? item.authorName : 'Tanpa nama'}</p>
         </div>
       </div>
-      <div className="ml-4 flex items-center gap-2 sm:gap-4" onClick={(event) => event.stopPropagation()}>
-        <div className={cn('whitespace-nowrap text-sm font-semibold sm:text-base', item.type === 'income' ? 'text-emerald-600' : 'text-slate-900')}>
-          {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)}
-        </div>
-        <div className="flex items-center gap-0.5 sm:gap-1">
-          {item.receiptImage && (
-            <button onClick={() => onViewReceipt(item.receiptImage ?? null)} className="rounded-full p-1.5 text-slate-300 transition-colors hover:bg-indigo-50 hover:text-indigo-500 sm:p-2" title="Lihat Struk">
-              <Receipt className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            </button>
-          )}
-          <button onClick={() => onEdit(item)} className="rounded-full p-1.5 text-slate-300 transition-colors hover:bg-blue-50 hover:text-blue-500 sm:p-2" title="Edit transaksi">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 sm:h-4 sm:w-4"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /><path d="m15 5 4 4" /></svg>
-          </button>
-          <button onClick={() => onRequestDelete(item.id)} className="rounded-full p-1.5 text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-500 sm:p-2" title="Hapus transaksi">
-            <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
-function GroupedDateSection({
-  date,
-  items,
-  index,
-  onViewDetail,
-  onViewReceipt,
-  onRequestDelete,
-  onEdit,
-}: {
-  date: string;
-  items: TransactionRecord[];
-  index: number;
-  onViewDetail: (transaction: TransactionRecord) => void;
-  onViewReceipt: (receipt: string | null) => void;
-  onRequestDelete: (id: string | null) => void;
-  onEdit: (transaction: TransactionRecord) => void;
-}) {
-  return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }} className="space-y-3">
-      <h3 className="px-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 sm:text-xs">{date}</h3>
-      <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
-        {items.map((item, itemIndex) => (
-          <TransactionRow
-            key={item.id}
-            item={item}
-            isLast={itemIndex === items.length - 1}
-            onViewDetail={onViewDetail}
-            onViewReceipt={onViewReceipt}
-            onRequestDelete={onRequestDelete}
-            onEdit={onEdit}
-          />
-        ))}
+      <div className="flex shrink-0 items-center gap-2" onClick={(event) => event.stopPropagation()}>
+        <div className="text-right">
+          <p className={cn('text-sm font-bold', item.type === 'income' ? 'text-emerald-600' : 'text-slate-900')}>
+            {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)}
+          </p>
+          <p className="mt-1 text-[11px] text-slate-400">{format(parseISO(item.date), 'dd MMM')}</p>
+        </div>
+        {item.receiptImage ? (
+          <button type="button" onClick={() => onViewReceipt(item.receiptImage ?? null)} className="rounded-full p-2 text-slate-400 transition hover:bg-indigo-50 hover:text-indigo-500" title="Lihat struk">
+            <Receipt className="h-4 w-4" />
+          </button>
+        ) : null}
+        <button type="button" onClick={() => onEdit(item)} className="rounded-full p-2 text-slate-400 transition hover:bg-sky-50 hover:text-sky-500" title="Edit transaksi">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /><path d="m15 5 4 4" /></svg>
+        </button>
+        <button type="button" onClick={() => onRequestDelete(item.id)} className="rounded-full p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-500" title="Hapus transaksi">
+          <Trash2 className="h-4 w-4" />
+        </button>
       </div>
-    </motion.div>
+    </button>
   );
 }
 
 function ReceiptViewer({ viewingReceipt, onClose }: { viewingReceipt: string | null; onClose: () => void }) {
   return (
     <AnimatePresence>
-      {viewingReceipt && (
+      {viewingReceipt ? (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-4 backdrop-blur-sm" onClick={onClose}>
-          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative flex max-h-[90vh] w-full max-w-2xl flex-col items-center justify-center" onClick={(event) => event.stopPropagation()}>
-            <button onClick={onClose} className="absolute -top-12 right-0 p-2 text-white/70 transition-colors hover:text-white">
-              <X className="h-8 w-8" />
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative w-full max-w-2xl" onClick={(event) => event.stopPropagation()}>
+            <button onClick={onClose} className="absolute -top-12 right-0 rounded-full bg-white/10 p-2 text-white">
+              <X className="h-6 w-6" />
             </button>
-            <img src={viewingReceipt} alt="Struk Belanja" className="max-h-[85vh] rounded-xl object-contain shadow-2xl" />
+            <img src={viewingReceipt} alt="Struk belanja" className="max-h-[85vh] w-full rounded-[28px] object-contain shadow-2xl" />
           </motion.div>
         </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-function TransactionDetailModal({ transaction, onClose, onViewReceipt }: { transaction: TransactionRecord | null; onClose: () => void; onViewReceipt: (receipt: string | null) => void }) {
-  return (
-    <AnimatePresence>
-      {transaction && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-4 backdrop-blur-sm sm:items-center" onClick={onClose}>
-          <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-slate-100 p-6">
-              <h2 className="text-xl font-semibold text-slate-800">Detail Transaksi</h2>
-              <button onClick={onClose} className="rounded-full bg-slate-100 p-2 transition-colors hover:bg-slate-200">
-                <X className="h-5 w-5 text-slate-500" />
-              </button>
-            </div>
-
-            <div className="space-y-6 overflow-y-auto p-6">
-              <div className="flex flex-col items-center justify-center space-y-2 text-center">
-                <div className={cn('flex h-16 w-16 items-center justify-center rounded-full', transaction.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600')}>
-                  {transaction.type === 'income' ? <ArrowDownRight className="h-8 w-8" /> : <ArrowUpRight className="h-8 w-8" />}
-                </div>
-                <p className="text-sm font-medium uppercase tracking-[0.24em] text-slate-400">{transaction.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}</p>
-                <h3 className="text-2xl font-bold text-slate-900">{formatCurrency(transaction.amount)}</h3>
-                <p className="text-sm font-medium text-slate-500">{transaction.category}</p>
-              </div>
-
-              <div className="space-y-3 rounded-3xl bg-slate-50 p-4">
-                <DetailRow icon={<Clock className="h-4 w-4" />} label="Tanggal" value={format(parseISO(transaction.date), 'dd MMM yyyy')} />
-                <DetailRow icon={<User className="h-4 w-4" />} label="Dicatat oleh" value={transaction.authorName && transaction.authorName !== 'Unknown' ? transaction.authorName : '-'} />
-                <DetailRow icon={<FileText className="h-4 w-4" />} label="Catatan" value={transaction.note || '-'} />
-              </div>
-
-              {transaction.receiptImage && (
-                <button onClick={() => onViewReceipt(transaction.receiptImage ?? null)} className="flex w-full items-center justify-between rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-left text-indigo-700 transition-colors hover:bg-indigo-100">
-                  <div className="flex items-center gap-3">
-                    <ImageIcon className="h-5 w-5" />
-                    <div>
-                      <p className="text-sm font-semibold">Lihat lampiran struk</p>
-                      <p className="text-xs text-indigo-600/80">Buka viewer struk dalam layar penuh.</p>
-                    </div>
-                  </div>
-                  <Receipt className="h-5 w-5" />
-                </button>
-              )}
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
+      ) : null}
     </AnimatePresence>
   );
 }
 
 function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="flex items-start gap-3 rounded-2xl bg-white px-4 py-3">
-      <div className="rounded-xl bg-slate-100 p-2 text-slate-500">{icon}</div>
+    <div className="flex items-start gap-3 rounded-[20px] bg-slate-50 px-4 py-3">
+      <div className="mt-0.5 text-slate-400">{icon}</div>
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</p>
-        <p className="mt-1 text-sm font-medium text-slate-900">{value}</p>
+        <p className="mt-1 text-sm text-slate-700">{value}</p>
       </div>
     </div>
   );
 }
 
-function DeleteConfirmationModal({ deletingId, onClose, onConfirm }: { deletingId: string | null; onClose: () => void; onConfirm: () => void }) {
+function TransactionDetailModal({ transaction, onClose, onViewReceipt }: { transaction: TransactionRecord | null; onClose: () => void; onViewReceipt: (receipt: string | null) => void }) {
   return (
     <AnimatePresence>
-      {deletingId && (
+      {transaction ? (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-4 backdrop-blur-sm sm:items-center" onClick={onClose}>
+          <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 24, stiffness: 220 }} className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-[30px] bg-white p-5 shadow-2xl sm:rounded-[30px]" onClick={(event) => event.stopPropagation()}>
+            <div className="mb-5 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Detail transaksi</p>
+                <h3 className="mt-1 text-2xl font-bold text-slate-900">{transaction.category}</h3>
+              </div>
+              <button onClick={onClose} className="rounded-full bg-slate-100 p-2 text-slate-500">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className={cn('mb-5 rounded-[26px] p-5 text-white', transaction.type === 'income' ? 'bg-gradient-to-br from-emerald-400 to-emerald-500' : 'bg-gradient-to-br from-indigo-500 to-pink-500')}>
+              <p className="text-sm text-white/80">{transaction.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}</p>
+              <p className="mt-2 text-3xl font-bold tracking-tight">{formatCurrency(transaction.amount)}</p>
+            </div>
+
+            <div className="space-y-3">
+              <DetailRow icon={<Calendar className="h-4 w-4" />} label="Tanggal" value={format(parseISO(transaction.date), 'dd MMM yyyy')} />
+              <DetailRow icon={<Clock className="h-4 w-4" />} label="Waktu catat" value={transaction.createdAt ? format(new Date(transaction.createdAt), 'dd MMM yyyy, HH:mm') : '-'} />
+              <DetailRow icon={<User className="h-4 w-4" />} label="Dicatat oleh" value={transaction.authorName && transaction.authorName !== 'Unknown' ? transaction.authorName : '-'} />
+              <DetailRow icon={<Tag className="h-4 w-4" />} label="Kategori" value={transaction.category} />
+              <DetailRow icon={<FileText className="h-4 w-4" />} label="Catatan" value={transaction.note || '-'} />
+            </div>
+
+            {transaction.receiptImage ? (
+              <button type="button" onClick={() => onViewReceipt(transaction.receiptImage ?? null)} className="mt-5 w-full rounded-[22px] bg-slate-900 px-4 py-3 font-semibold text-white">
+                Lihat struk
+              </button>
+            ) : null}
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
+function DeleteConfirmationModal({ deletingId, onRequestDelete, onConfirmDelete }: Pick<TransactionListViewProps, 'deletingId' | 'onRequestDelete' | 'onConfirmDelete'>) {
+  return (
+    <AnimatePresence>
+      {deletingId ? (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
-            <h3 className="mb-2 text-lg font-bold text-slate-900">Hapus Transaksi?</h3>
-            <p className="mb-6 text-sm text-slate-500">Transaksi ini akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.</p>
-            <div className="flex gap-3">
-              <button onClick={onClose} className="flex-1 rounded-xl bg-slate-100 px-4 py-3 font-medium text-slate-700 transition-colors hover:bg-slate-200">Batal</button>
-              <button onClick={onConfirm} className="flex-1 rounded-xl bg-rose-600 px-4 py-3 font-medium text-white transition-colors hover:bg-rose-700">Ya, Hapus</button>
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="w-full max-w-sm rounded-[28px] bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-slate-900">Hapus transaksi?</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-500">Tindakan ini tidak bisa dibatalkan. Pastikan data sudah benar sebelum menghapus.</p>
+            <div className="mt-6 flex gap-3">
+              <button onClick={() => onRequestDelete(null)} className="flex-1 rounded-[20px] bg-slate-100 px-4 py-3 font-medium text-slate-700">Batal</button>
+              <button onClick={onConfirmDelete} className="flex-1 rounded-[20px] bg-rose-500 px-4 py-3 font-medium text-white">Hapus</button>
             </div>
           </motion.div>
         </motion.div>
-      )}
+      ) : null}
     </AnimatePresence>
   );
 }
@@ -342,35 +240,33 @@ function DeleteConfirmationModal({ deletingId, onClose, onConfirm }: { deletingI
 export function TransactionListView(props: TransactionListViewProps) {
   const hasActiveFilters = Boolean(props.filters.category || props.filters.startDate || props.filters.endDate);
 
-  if (props.transactions.length === 0) {
-    return (
-      <div className="px-4 py-12 text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
-          <Calendar className="h-8 w-8 text-slate-400" />
-        </div>
-        <h3 className="mb-1 text-base font-medium text-slate-900 sm:text-lg">Belum ada transaksi</h3>
-        <p className="text-xs text-slate-500 sm:text-sm">Ketuk tombol + untuk menambahkan transaksi pertama Anda.</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6 pb-24">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-slate-900">Riwayat Transaksi</h2>
-        <button
-          onClick={props.onToggleFilters}
-          className={cn(
-            'flex items-center gap-2 rounded-full p-2 text-sm font-medium transition-colors',
-            props.filters.showFilters || hasActiveFilters ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-          )}
-        >
-          <Filter className="h-4 w-4" />
-          <span className="hidden sm:inline">Filter</span>
-        </button>
-      </div>
+    <div className="space-y-5 pb-8">
+      <section className="rounded-[32px] border border-white/70 bg-white/90 p-5 shadow-[0_18px_60px_rgba(148,163,184,0.16)]">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-indigo-400">Riwayat</p>
+            <h2 className="mt-1 text-xl font-bold text-slate-900">Semua transaksi tetap rapi</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-500">Tidak terlalu banyak card. Fokus ke daftar, nominal, dan detail yang memang penting.</p>
+          </div>
+          <button onClick={props.onToggleFilters} className={cn('rounded-[20px] p-3 transition', props.filters.showFilters || hasActiveFilters ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-500')}>
+            <Filter className="h-5 w-5" />
+          </button>
+        </div>
 
-      <TransactionFilterPanel
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="rounded-[24px] bg-slate-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Total data</p>
+            <p className="mt-2 text-2xl font-bold text-slate-900">{props.transactions.length}</p>
+          </div>
+          <div className="rounded-[24px] bg-slate-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Filter aktif</p>
+            <p className="mt-2 text-sm font-semibold text-slate-900">{hasActiveFilters ? 'Ya, sedang dipersempit' : 'Belum ada'}</p>
+          </div>
+        </div>
+      </section>
+
+      <FilterPanel
         filters={props.filters}
         uniqueCategories={props.uniqueCategories}
         onCategoryFilterChange={props.onCategoryFilterChange}
@@ -379,32 +275,27 @@ export function TransactionListView(props: TransactionListViewProps) {
         onResetFilters={props.onResetFilters}
       />
 
-      {props.groupedTransactions.length === 0 ? (
-        <div className="px-4 py-12 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
-            <Filter className="h-8 w-8 text-slate-400" />
-          </div>
-          <h3 className="mb-1 text-base font-medium text-slate-900 sm:text-lg">Tidak ada hasil</h3>
-          <p className="text-xs text-slate-500 sm:text-sm">Coba ubah filter untuk melihat transaksi lainnya.</p>
-        </div>
-      ) : (
+      {props.groupedTransactions.length > 0 ? (
         props.groupedTransactions.map((group, index) => (
-          <GroupedDateSection
-            key={group.date}
-            date={group.date}
-            items={group.items}
-            index={index}
-            onViewDetail={props.onViewDetail}
-            onViewReceipt={props.onViewReceipt}
-            onRequestDelete={props.onRequestDelete}
-            onEdit={props.onEdit}
-          />
+          <motion.section key={group.date} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }} className="space-y-3">
+            <p className="px-1 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">{group.date}</p>
+            <div className="overflow-hidden rounded-[28px] border border-white/70 bg-white/90 shadow-[0_18px_60px_rgba(148,163,184,0.16)]">
+              {group.items.map((item, itemIndex) => (
+                <TransactionRow key={item.id} item={item} isLast={itemIndex === group.items.length - 1} onViewDetail={props.onViewDetail} onViewReceipt={props.onViewReceipt} onRequestDelete={props.onRequestDelete} onEdit={props.onEdit} />
+              ))}
+            </div>
+          </motion.section>
         ))
+      ) : (
+        <section className="rounded-[32px] border border-dashed border-slate-200 bg-white/80 px-6 py-10 text-center shadow-sm">
+          <h3 className="text-lg font-semibold text-slate-900">Belum ada transaksi yang cocok</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-500">Coba ubah filter atau tambahkan transaksi baru dari tombol plus di bawah.</p>
+        </section>
       )}
 
-      <DeleteConfirmationModal deletingId={props.deletingId} onClose={() => props.onRequestDelete(null)} onConfirm={props.onConfirmDelete} />
       <ReceiptViewer viewingReceipt={props.viewingReceipt} onClose={() => props.onViewReceipt(null)} />
       <TransactionDetailModal transaction={props.viewingDetail} onClose={props.onCloseDetail} onViewReceipt={props.onViewReceipt} />
+      <DeleteConfirmationModal deletingId={props.deletingId} onRequestDelete={props.onRequestDelete} onConfirmDelete={props.onConfirmDelete} />
     </div>
   );
 }

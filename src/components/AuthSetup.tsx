@@ -1,4 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  ChevronRight,
+  KeyRound,
+  LoaderCircle,
+  LogIn,
+  Mail,
+  Plus,
+  UserRound,
+  Users,
+  Wallet,
+} from 'lucide-react';
 import {
   auth,
   createUserWithEmailAndPassword,
@@ -11,19 +25,6 @@ import {
   signInWithEmailAndPassword,
   updateProfile,
 } from '../firebase';
-import { motion } from 'motion/react';
-import {
-  ArrowLeft,
-  ChevronRight,
-  KeyRound,
-  LoaderCircle,
-  LogIn,
-  Mail,
-  Plus,
-  UserRound,
-  Users,
-  Wallet,
-} from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { buildUserProfileData } from '../lib/userProfile';
 import { cn } from '../lib/utils';
@@ -79,6 +80,61 @@ function mapFirebaseAuthError(error: any) {
 
 function LoadingSpinner() {
   return <LoaderCircle className="h-5 w-5 animate-spin" />;
+}
+
+function SoftLogo() {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
+        <span className="h-4 w-2 rounded-full bg-pink-300" />
+        <span className="h-4 w-2 rounded-full bg-indigo-500" />
+      </div>
+      <span className="text-xl font-bold tracking-tight text-slate-900">Monity</span>
+    </div>
+  );
+}
+
+function PhoneIllustration() {
+  return (
+    <div className="relative mx-auto h-[320px] w-[220px] rounded-[36px] border border-white/70 bg-white p-5 shadow-[0_30px_80px_rgba(99,102,241,0.18)]">
+      <div className="absolute left-1/2 top-3 h-1.5 w-16 -translate-x-1/2 rounded-full bg-slate-200" />
+      <div className="mt-6 space-y-4">
+        <div className="rounded-[26px] bg-gradient-to-br from-indigo-500 to-indigo-400 p-4 text-white shadow-lg">
+          <p className="text-xs font-medium text-white/80">Total pengeluaran</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight">Rp3,7jt</p>
+          <p className="mt-2 inline-flex rounded-full bg-white/15 px-2 py-1 text-[11px]">lebih rapi dari bulan lalu</p>
+        </div>
+        <div className="grid grid-cols-[1.1fr_0.9fr] gap-3">
+          <div className="rounded-[24px] bg-slate-50 p-4 shadow-inner">
+            <div className="flex h-24 items-end gap-2">
+              <span className="h-8 w-6 rounded-xl bg-pink-300" />
+              <span className="h-12 w-6 rounded-xl bg-amber-300" />
+              <span className="h-16 w-6 rounded-xl bg-sky-300" />
+              <span className="h-20 w-6 rounded-xl bg-indigo-300" />
+            </div>
+          </div>
+          <div className="space-y-3 rounded-[24px] bg-slate-50 p-4 shadow-inner">
+            <div className="h-9 rounded-2xl bg-pink-200/80" />
+            <div className="space-y-2 rounded-2xl bg-white p-3 shadow-sm">
+              <div className="h-2 rounded-full bg-slate-200" />
+              <div className="h-2 w-4/5 rounded-full bg-sky-200" />
+              <div className="h-2 w-2/3 rounded-full bg-indigo-200" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="absolute -left-5 top-24 rounded-full bg-white px-3 py-2 shadow-lg">
+        <Wallet className="h-6 w-6 text-sky-500" />
+      </div>
+      <div className="absolute -right-4 bottom-20 rounded-full bg-white px-3 py-2 shadow-lg">
+        <ArrowRight className="h-6 w-6 text-emerald-500" />
+      </div>
+    </div>
+  );
+}
+
+function SectionCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return <div className={cn('rounded-[30px] border border-white/70 bg-white/90 p-5 shadow-[0_20px_60px_rgba(148,163,184,0.16)] backdrop-blur-xl', className)}>{children}</div>;
 }
 
 export function AuthSetup({ onComplete }: { onComplete: (householdId: string) => void }) {
@@ -210,13 +266,7 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
       const path = `users/${result.user.uid}`;
 
       setDisplayName(resolvedName);
-      await setDoc(
-        doc(db, path),
-        buildUserProfileData(result.user, {
-          displayName: resolvedName,
-        }),
-        { merge: true },
-      );
+      await setDoc(doc(db, path), buildUserProfileData(result.user, { displayName: resolvedName }), { merge: true });
 
       const profile = await loadUserProfile(result.user.uid);
       if (profile.currentHouseholdId) {
@@ -333,13 +383,7 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
 
         const members = householdDoc.data().members || [];
         if (!members.includes(user.uid)) {
-          await setDoc(
-            householdRef,
-            {
-              members: [...members, user.uid],
-            },
-            { merge: true },
-          );
+          await setDoc(householdRef, { members: [...members, user.uid] }, { merge: true });
         }
       } else {
         if (householdDoc.exists()) {
@@ -356,7 +400,7 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
           payday: parseInt(payday, 10),
         });
       }
-      
+
       const resolvedDisplayName = displayName.trim() || user.displayName || user.email || '';
 
       if (resolvedDisplayName && user.displayName !== resolvedDisplayName) {
@@ -384,56 +428,58 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
   };
 
   const renderError = () =>
-    error ? <p className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-left text-sm text-rose-600">{error}</p> : null;
+    error ? <p className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-600">{error}</p> : null;
 
-  const renderAuthWelcome = () => (
-    <div className="space-y-4 text-left">
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="mb-3 flex items-center gap-3">
-          <div className="rounded-2xl bg-slate-900 p-3 text-white">
-            <LogIn className="h-5 w-5" />
+  const renderWelcome = () => (
+    <div className="space-y-5">
+      <SectionCard className="overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,241,255,0.92))]">
+        <div className="mb-5 flex items-center justify-between">
+          <SoftLogo />
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-500">01 / 02</span>
+        </div>
+        <PhoneIllustration />
+        <div className="mt-6 text-center">
+          <h2 className="text-3xl font-bold leading-tight text-slate-900">Cara mudah memantau pengeluaranmu</h2>
+          <p className="mt-3 text-sm leading-6 text-slate-500">Kelola masa depan finansial dengan tampilan yang lebih tenang, fokus pada informasi penting, dan nyaman dipakai setiap hari.</p>
+        </div>
+        <div className="mt-6 flex items-center justify-between">
+          <div className="flex gap-2">
+            <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-300" />
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              setError('');
+              setAuthScreen('email-signin');
+            }}
+            className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-gradient-to-br from-pink-400 to-pink-500 text-white shadow-[0_14px_30px_rgba(244,114,182,0.35)]"
+            aria-label="Lanjut ke login"
+          >
+            <ArrowRight className="h-5 w-5" />
+          </button>
+        </div>
+      </SectionCard>
+
+      <SectionCard className="space-y-3">
+        <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-semibold text-slate-900">Masuk dengan Google</h2>
-            <p className="text-sm text-slate-500">Cepat, praktis, dan langsung siap dipakai.</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-indigo-400">Quick access</p>
+            <h3 className="mt-1 text-lg font-semibold text-slate-900">Masuk lebih cepat</h3>
           </div>
+          <ChevronRight className="h-5 w-5 text-slate-300" />
         </div>
         <button
           type="button"
           onClick={handleGoogleLogin}
           disabled={isBusy}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3.5 font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-2 rounded-[22px] bg-slate-900 px-4 py-4 font-semibold text-white disabled:opacity-60"
         >
           {loadingAction === 'google' ? <LoadingSpinner /> : <LogIn className="h-5 w-5" />}
           Lanjutkan dengan Google
         </button>
-      </div>
-
-      <div className="relative py-2 text-center text-xs font-medium uppercase tracking-[0.2em] text-slate-400">
-        <span className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-slate-200" />
-        <span className="relative bg-white px-4">atau</span>
-      </div>
-
-      <div>
-        <button
-          type="button"
-          onClick={() => {
-            setError('');
-            setAuthScreen('email-signin');
-          }}
-          disabled={isBusy}
-          className="w-full rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <div className="mb-4 flex items-center justify-between">
-            <div className="rounded-2xl bg-indigo-600 p-3 text-white">
-              <Mail className="h-5 w-5" />
-            </div>
-            <ChevronRight className="h-5 w-5 text-indigo-400" />
-          </div>
-          <h3 className="font-semibold text-slate-900">Masuk dengan Email</h3>
-          <p className="mt-1 text-sm text-slate-500">Gunakan email dan password untuk akun pribadi Anda.</p>
-        </button>
-      </div>
+        <p className="text-center text-xs text-slate-500">Atau ketuk panah di atas untuk masuk dengan email & password.</p>
+      </SectionCard>
     </div>
   );
 
@@ -441,326 +487,270 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
     const isSignup = mode === 'signup';
 
     return (
-      <form onSubmit={isSignup ? handleEmailSignUp : handleEmailSignIn} className="space-y-4 text-left">
-        <button
-          type="button"
-          onClick={resetToWelcome}
-          className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-slate-700"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Kembali ke pilihan login
-        </button>
+      <form onSubmit={isSignup ? handleEmailSignUp : handleEmailSignIn} className="space-y-5">
+        <SectionCard className="space-y-5">
+          <div className="flex items-center justify-between">
+            <button type="button" onClick={resetToWelcome} className="inline-flex items-center gap-2 text-sm font-medium text-slate-500">
+              <ArrowLeft className="h-4 w-4" /> Kembali
+            </button>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-500">02 / 02</span>
+          </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-5">
-            <h2 className="text-lg font-semibold text-slate-900">
-              {isSignup ? 'Buat akun dengan email' : 'Masuk dengan email'}
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
+          <div className="space-y-2">
+            <SoftLogo />
+            <h2 className="text-2xl font-bold text-slate-900">{isSignup ? 'Buat akun baru' : 'Masuk ke akun kamu'}</h2>
+            <p className="text-sm leading-6 text-slate-500">
               {isSignup
-                ? 'Simpan nama tampilan agar pasangan Anda mudah mengenali akun ini.'
-                : 'Masukkan email dan password yang sudah terdaftar.'}
+                ? 'Gunakan email pribadi agar sinkronisasi keluarga tetap mudah dan aman.'
+                : 'Masukkan email dan password untuk lanjut ke dashboard keuanganmu.'}
             </p>
           </div>
 
-          <div className="space-y-4">
-            {isSignup && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Nama tampilan</label>
-                <div className="relative">
-                  <UserRound className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    required
-                    value={emailForm.displayName}
-                    onChange={(e) => updateEmailField('displayName', e.target.value)}
-                    placeholder="Contoh: Aulia"
-                    className="w-full rounded-2xl bg-slate-50 py-3 pl-12 pr-4 text-slate-900 outline-none ring-0 transition focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Email</label>
+          {isSignup && (
+            <label className="block space-y-2">
+              <span className="text-sm font-medium text-slate-700">Nama tampilan</span>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                <UserRound className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                 <input
-                  type="email"
+                  type="text"
                   required
-                  value={emailForm.email}
-                  onChange={(e) => updateEmailField('email', e.target.value)}
-                  placeholder="nama@email.com"
-                  className="w-full rounded-2xl bg-slate-50 py-3 pl-12 pr-4 text-slate-900 outline-none ring-0 transition focus:ring-2 focus:ring-indigo-500"
+                  value={emailForm.displayName}
+                  onChange={(e) => updateEmailField('displayName', e.target.value)}
+                  placeholder="Contoh: Aulia"
+                  className="w-full rounded-[22px] bg-slate-50 py-4 pl-12 pr-4 text-slate-900 outline-none transition focus:ring-2 focus:ring-indigo-400"
                 />
               </div>
-            </div>
+            </label>
+          )}
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Password</label>
+          <label className="block space-y-2">
+            <span className="text-sm font-medium text-slate-700">Email</span>
+            <div className="relative">
+              <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+              <input
+                type="email"
+                required
+                value={emailForm.email}
+                onChange={(e) => updateEmailField('email', e.target.value)}
+                placeholder="nama@email.com"
+                className="w-full rounded-[22px] bg-slate-50 py-4 pl-12 pr-4 text-slate-900 outline-none transition focus:ring-2 focus:ring-indigo-400"
+              />
+            </div>
+          </label>
+
+          <label className="block space-y-2">
+            <span className="text-sm font-medium text-slate-700">Password</span>
+            <div className="relative">
+              <KeyRound className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+              <input
+                type="password"
+                required
+                value={emailForm.password}
+                onChange={(e) => updateEmailField('password', e.target.value)}
+                placeholder={isSignup ? 'Minimal 6 karakter' : 'Masukkan password'}
+                className="w-full rounded-[22px] bg-slate-50 py-4 pl-12 pr-4 text-slate-900 outline-none transition focus:ring-2 focus:ring-indigo-400"
+              />
+            </div>
+          </label>
+
+          {isSignup && (
+            <label className="block space-y-2">
+              <span className="text-sm font-medium text-slate-700">Konfirmasi password</span>
               <div className="relative">
                 <KeyRound className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                 <input
                   type="password"
                   required
-                  value={emailForm.password}
-                  onChange={(e) => updateEmailField('password', e.target.value)}
-                  placeholder={isSignup ? 'Minimal 6 karakter' : 'Masukkan password Anda'}
-                  className="w-full rounded-2xl bg-slate-50 py-3 pl-12 pr-4 text-slate-900 outline-none ring-0 transition focus:ring-2 focus:ring-indigo-500"
+                  value={emailForm.confirmPassword}
+                  onChange={(e) => updateEmailField('confirmPassword', e.target.value)}
+                  placeholder="Ulangi password"
+                  className="w-full rounded-[22px] bg-slate-50 py-4 pl-12 pr-4 text-slate-900 outline-none transition focus:ring-2 focus:ring-indigo-400"
                 />
               </div>
-            </div>
+            </label>
+          )}
 
-            {isSignup && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Konfirmasi password</label>
-                <div className="relative">
-                  <KeyRound className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="password"
-                    required
-                    value={emailForm.confirmPassword}
-                    onChange={(e) => updateEmailField('confirmPassword', e.target.value)}
-                    placeholder="Ulangi password Anda"
-                    className="w-full rounded-2xl bg-slate-50 py-3 pl-12 pr-4 text-slate-900 outline-none ring-0 transition focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            disabled={isBusy}
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-3.5 font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
+          <button type="submit" disabled={isBusy} className="flex w-full items-center justify-center gap-2 rounded-[22px] bg-slate-900 px-4 py-4 font-semibold text-white disabled:opacity-60">
             {loadingAction === (isSignup ? 'email-signup' : 'email-signin') ? <LoadingSpinner /> : <Mail className="h-5 w-5" />}
-            {isSignup ? 'Buat akun sekarang' : 'Masuk sekarang'}
+            {isSignup ? 'Buat akun & lanjutkan' : 'Masuk dengan email'}
           </button>
-        </div>
 
-        <div className="text-center text-sm text-slate-500">
-          {isSignup ? 'Sudah punya akun?' : 'Belum punya akun?'}{' '}
-          <button
-            type="button"
-            onClick={() => {
-              setError('');
-              setAuthScreen(isSignup ? 'email-signin' : 'email-signup');
-            }}
-            className="font-semibold text-indigo-600 hover:text-indigo-700"
-          >
-            {isSignup ? 'Masuk di sini' : 'Daftar di sini'}
+          <button type="button" onClick={handleGoogleLogin} disabled={isBusy} className="flex w-full items-center justify-center gap-2 rounded-[22px] border border-slate-200 bg-white px-4 py-4 font-semibold text-slate-700 disabled:opacity-60">
+            {loadingAction === 'google' ? <LoadingSpinner /> : <LogIn className="h-5 w-5" />}
+            Masuk dengan Google
           </button>
-        </div>
+        </SectionCard>
+
+        <SectionCard className="text-center">
+          <p className="text-sm text-slate-500">
+            {isSignup ? 'Sudah punya akun?' : 'Belum punya akun?'}{' '}
+            <button
+              type="button"
+              onClick={() => {
+                setError('');
+                setAuthScreen(isSignup ? 'email-signin' : 'email-signup');
+              }}
+              className="font-semibold text-indigo-600"
+            >
+              {isSignup ? 'Masuk di sini' : 'Daftar sekarang'}
+            </button>
+          </p>
+        </SectionCard>
       </form>
     );
   };
 
   const renderHouseholdChoice = () => (
-    <div className="space-y-4">
-      <button
-        type="button"
-        onClick={handleStartCreate}
-        className="w-full rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200"
-      >
-        <div className="mb-3 flex items-center justify-between">
-          <div className="rounded-2xl bg-indigo-600 p-3 text-white">
-            <Plus className="h-5 w-5" />
-          </div>
-          <ChevronRight className="h-5 w-5 text-indigo-400" />
+    <div className="space-y-5">
+      <SectionCard className="space-y-4 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(243,244,255,0.96))]">
+        <div className="flex items-center justify-between">
+          <SoftLogo />
+          <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-600">Siap dipakai</span>
         </div>
-        <h3 className="font-bold text-slate-900">Buat ID Baru</h3>
-        <p className="mt-1 text-sm text-slate-500">Mulai catatan keuangan baru untuk household Anda.</p>
-      </button>
+        <div>
+          <p className="text-sm text-slate-500">Halo, {greetingLabel}</p>
+          <h2 className="mt-1 text-2xl font-bold text-slate-900">Pilih cara mulai yang paling mudah</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-500">Buat ruang keuangan baru untuk keluarga atau gabung ke ID yang sudah ada. Fokusnya tetap simpel: catatan penting dulu.</p>
+        </div>
+        {requiresProfileCompletion && (
+          <div className="space-y-3 rounded-[24px] bg-slate-50 p-4">
+            <label className="block space-y-2">
+              <span className="text-sm font-medium text-slate-700">Lengkapi nama tampilan</span>
+              <input
+                type="text"
+                value={displayName}
+                onChange={(event) => setDisplayName(event.target.value)}
+                placeholder="Nama yang tampil di transaksi"
+                className="w-full rounded-[20px] bg-white px-4 py-3 text-slate-900 outline-none transition focus:ring-2 focus:ring-indigo-400"
+              />
+            </label>
+            <button type="button" onClick={handleSaveDisplayName} disabled={loadingAction === 'profile'} className="flex w-full items-center justify-center gap-2 rounded-[20px] bg-slate-900 px-4 py-3 font-semibold text-white disabled:opacity-60">
+              {loadingAction === 'profile' ? <LoadingSpinner /> : <UserRound className="h-5 w-5" />}
+              Simpan nama
+            </button>
+          </div>
+        )}
+      </SectionCard>
 
-      <button
-        type="button"
-        onClick={() => {
-          setError('');
-          setHouseholdId('');
-          setSetupMode('join');
-        }}
-        className="w-full rounded-3xl border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300"
-      >
-        <div className="mb-3 flex items-center justify-between">
-          <div className="rounded-2xl bg-slate-800 p-3 text-white">
-            <Users className="h-5 w-5" />
-          </div>
-          <ChevronRight className="h-5 w-5 text-slate-400" />
+      {setupMode === 'choice' ? (
+        <div className="space-y-4">
+          <button type="button" onClick={handleStartCreate} className="w-full text-left">
+            <SectionCard className="transition hover:-translate-y-0.5 hover:border-indigo-100">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-[18px] bg-indigo-100 text-indigo-600">
+                    <Plus className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-900">Buat ruang keuangan baru</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">Cocok kalau kamu ingin mulai dari nol dengan tampilan rapi dan payday yang bisa diatur.</p>
+                </div>
+                <ChevronRight className="mt-1 h-5 w-5 text-slate-300" />
+              </div>
+            </SectionCard>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setError('');
+              setSetupMode('join');
+              setHouseholdId('');
+            }}
+            className="w-full text-left"
+          >
+            <SectionCard className="transition hover:-translate-y-0.5 hover:border-pink-100">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-[18px] bg-pink-100 text-pink-500">
+                    <Users className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-900">Gabung ke ID keluarga</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">Masukkan ID yang dibagikan pasangan atau anggota keluarga untuk melihat catatan yang sama.</p>
+                </div>
+                <ChevronRight className="mt-1 h-5 w-5 text-slate-300" />
+              </div>
+            </SectionCard>
+          </button>
         </div>
-        <h3 className="font-bold text-slate-900">Gabung ID Lama</h3>
-        <p className="mt-1 text-sm text-slate-500">Masukkan ID yang sudah dibuat pasangan atau anggota household lain.</p>
-      </button>
+      ) : (
+        <form onSubmit={handleJoinHousehold} className="space-y-4">
+          <SectionCard className="space-y-4">
+            <button type="button" onClick={() => setSetupMode('choice')} className="inline-flex items-center gap-2 text-sm font-medium text-slate-500">
+              <ArrowLeft className="h-4 w-4" /> Kembali
+            </button>
+
+            <div>
+              <h3 className="text-xl font-bold text-slate-900">{setupMode === 'create' ? 'Buat ruang keuangan' : 'Gabung ke ruang keuangan'}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                {setupMode === 'create'
+                  ? 'Kami siapkan struktur yang ringan. Kamu tinggal tentukan payday dan lanjut mulai mencatat.'
+                  : 'Tempel ID keluarga yang kamu terima untuk langsung sinkron dengan data yang sama.'}
+              </p>
+            </div>
+
+            <label className="block space-y-2">
+              <span className="text-sm font-medium text-slate-700">Nama tampilan</span>
+              <input
+                type="text"
+                value={displayName}
+                onChange={(event) => setDisplayName(event.target.value)}
+                placeholder="Contoh: Aulia"
+                className="w-full rounded-[22px] bg-slate-50 px-4 py-4 text-slate-900 outline-none transition focus:ring-2 focus:ring-indigo-400"
+              />
+            </label>
+
+            <label className="block space-y-2">
+              <span className="text-sm font-medium text-slate-700">ID keuangan</span>
+              <input
+                type="text"
+                value={householdId}
+                onChange={(event) => setHouseholdId(event.target.value.toLowerCase())}
+                className="w-full rounded-[22px] bg-slate-50 px-4 py-4 font-mono text-slate-900 outline-none transition focus:ring-2 focus:ring-indigo-400"
+                placeholder="contoh: ab12cd34"
+              />
+            </label>
+
+            {setupMode === 'create' && (
+              <label className="block space-y-2">
+                <span className="text-sm font-medium text-slate-700">Tanggal payday</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="31"
+                  value={payday}
+                  onChange={(event) => setPayday(event.target.value)}
+                  className="w-full rounded-[22px] bg-slate-50 px-4 py-4 text-slate-900 outline-none transition focus:ring-2 focus:ring-indigo-400"
+                />
+              </label>
+            )}
+
+            <button type="submit" disabled={householdSubmitDisabled} className="flex w-full items-center justify-center gap-2 rounded-[22px] bg-slate-900 px-4 py-4 font-semibold text-white disabled:opacity-60">
+              {loadingAction === 'household' ? <LoadingSpinner /> : setupMode === 'create' ? <Plus className="h-5 w-5" /> : <Users className="h-5 w-5" />}
+              {setupMode === 'create' ? 'Buat & masuk' : 'Gabung sekarang'}
+            </button>
+          </SectionCard>
+        </form>
+      )}
     </div>
   );
 
-  const renderHouseholdForm = () => (
-    <form onSubmit={handleJoinHousehold} className="space-y-4 text-left">
-      <button
-        type="button"
-        onClick={() => {
-          setError('');
-          setSetupMode('choice');
-        }}
-        className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-slate-700"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Kembali ke pilihan household
-      </button>
-
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Nama Anda</label>
-            <input
-              type="text"
-              required
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Nama panggilan yang tampil di aplikasi"
-              className="w-full rounded-2xl bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-
-          {setupMode === 'join' ? (
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">ID Keuangan</label>
-              <div className="relative">
-                <Users className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  required
-                  value={householdId}
-                  onChange={(e) => setHouseholdId(e.target.value)}
-                  placeholder="Masukkan ID dari pasangan"
-                  className="w-full rounded-2xl bg-slate-50 py-3 pl-12 pr-4 text-slate-900 outline-none transition focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">ID Keuangan Anda</label>
-              <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-4 text-center font-mono text-lg font-bold tracking-[0.3em] text-slate-900">
-                {householdId}
-              </div>
-              <p className="text-xs text-slate-500">Simpan ID ini lalu bagikan ke pasangan Anda agar bisa bergabung nanti.</p>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Tanggal gajian</label>
-            <input
-              type="number"
-              min="1"
-              max="31"
-              required
-              value={payday}
-              onChange={(e) => setPayday(e.target.value)}
-              className="w-full rounded-2xl bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:ring-2 focus:ring-indigo-500"
-            />
-            <p className="text-xs text-slate-500">Dipakai untuk menyusun siklus bulanan pada dashboard household.</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={() => setSetupMode('choice')}
-          className="flex-1 rounded-2xl bg-slate-100 px-4 py-3.5 font-semibold text-slate-700 transition hover:bg-slate-200"
-        >
-          Batal
-        </button>
-        <button
-          type="submit"
-          disabled={householdSubmitDisabled}
-          className="flex-[1.4] rounded-2xl bg-indigo-600 px-4 py-3.5 font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <span className="flex items-center justify-center gap-2">
-            {loadingAction === 'household' ? <LoadingSpinner /> : null}
-            {setupMode === 'create' ? 'Buat Sekarang' : 'Gabung Sekarang'}
-          </span>
-        </button>
-      </div>
-    </form>
-  );
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/40 to-amber-50/40 px-6 py-10">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mx-auto w-full max-w-xl rounded-[2rem] border border-white/80 bg-white/95 p-6 shadow-xl shadow-slate-200/60 backdrop-blur md:p-8"
-      >
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-slate-900 text-white shadow-lg shadow-indigo-200">
-            <Wallet className="h-8 w-8" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">Finance Sync</h1>
-          <p className="mt-2 text-sm text-slate-500 md:text-base">
-            Catat keuangan bersama pasangan secara real-time dengan login Google atau email.
-          </p>
-        </div>
-
-        {renderError()}
-
-        <div className={cn('mt-4 space-y-5', error && 'pt-1')}>
-          {!user && authScreen === 'welcome' && renderAuthWelcome()}
-          {!user && authScreen === 'email-signin' && renderEmailForm('signin')}
-          {!user && authScreen === 'email-signup' && renderEmailForm('signup')}
-
-          {user && authScreen === 'post-login-choice' && (
-            <div className="space-y-5">
-              <section className="rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-5 text-left shadow-sm">
-                <p className="text-sm font-medium text-indigo-600">Sudah berhasil masuk</p>
-                <h2 className="mt-1 text-xl font-bold text-slate-900">Halo, {greetingLabel} 👋</h2>
-                <p className="mt-2 text-sm text-slate-500">
-                  Langkah berikutnya, pilih apakah ingin membuat household baru atau bergabung ke household yang sudah ada.
-                </p>
-              </section>
-
-              {requiresProfileCompletion && (
-                <section className="rounded-3xl border border-amber-100 bg-white p-5 shadow-sm">
-                  <div className="mb-4 text-left">
-                    <h3 className="font-semibold text-slate-900">Lengkapi nama tampilan</h3>
-                    <p className="mt-1 text-sm text-slate-500">
-                      Nama ini akan tampil pada transaksi dan profil household Anda.
-                    </p>
-                  </div>
-
-                  <div className="space-y-3">
-                    <input
-                      type="text"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      placeholder="Contoh: Nanda"
-                      className="w-full rounded-2xl bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:ring-2 focus:ring-indigo-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleSaveDisplayName}
-                      disabled={loadingAction === 'profile' || !displayName.trim()}
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 py-3.5 font-semibold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {loadingAction === 'profile' ? <LoadingSpinner /> : <UserRound className="h-5 w-5" />}
-                      Simpan nama tampilan
-                    </button>
-                  </div>
-                </section>
-              )}
-
-              <section className="space-y-4 rounded-3xl border border-slate-200 bg-slate-50/70 p-4 md:p-5">
-                <div className="text-left">
-                  <p className="text-sm font-medium text-slate-500">Flow household</p>
-                  <h3 className="text-lg font-bold text-slate-900">Pilih langkah berikutnya</h3>
-                </div>
-
-                {setupMode === 'choice' ? renderHouseholdChoice() : renderHouseholdForm()}
-              </section>
-            </div>
-          )}
-        </div>
-      </motion.div>
+    <div className="space-y-4 pb-3">
+      {renderError()}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={`${authScreen}-${setupMode}`}
+          initial={{ opacity: 0, x: 18 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -18 }}
+          transition={{ duration: 0.22 }}
+        >
+          {authScreen === 'welcome' && renderWelcome()}
+          {authScreen === 'email-signin' && renderEmailForm('signin')}
+          {authScreen === 'email-signup' && renderEmailForm('signup')}
+          {authScreen === 'post-login-choice' && renderHouseholdChoice()}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }
