@@ -227,6 +227,7 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
       } catch (err) {
         handleFirestoreError(err, OperationType.WRITE, path);
       await syncUserProfile(result.user, result.user.displayName || '');
+      }
     } catch (err: any) {
       setError(mapFirebaseAuthError(err));
     } finally {
