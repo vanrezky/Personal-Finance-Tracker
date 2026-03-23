@@ -1,6 +1,18 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import {
+  createUserWithEmailAndPassword,
+  fetchSignInMethodsForEmail,
+  getAuth,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInAnonymously,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  updateProfile,
+} from 'firebase/auth';
 import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, query, orderBy, addDoc, updateDoc, deleteDoc, where, getDocs, writeBatch, limit } from 'firebase/firestore';
+
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -19,4 +31,25 @@ export const googleProvider = new GoogleAuthProvider();
 export const loginWithGoogle = () => signInWithPopup(auth, googleProvider);
 export const logout = () => signOut(auth);
 
-export { onAuthStateChanged, collection, doc, setDoc, getDoc, onSnapshot, query, orderBy, addDoc, updateDoc, deleteDoc, where, getDocs, writeBatch, limit };
+export {
+  addDoc,
+  collection,
+  createUserWithEmailAndPassword,
+  deleteDoc,
+  doc,
+  fetchSignInMethodsForEmail,
+  getDoc,
+  getDocs,
+  limit,
+  onAuthStateChanged,
+  onSnapshot,
+  orderBy,
+  query,
+  setDoc,
+  signInAnonymously,
+  signInWithEmailAndPassword,
+  updateDoc,
+  updateProfile,
+  where,
+  writeBatch,
+};
