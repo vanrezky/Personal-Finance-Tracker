@@ -101,23 +101,25 @@ export function Reports({ householdId }: { householdId: string }) {
           <Calendar className="w-5 h-5 text-indigo-600" />
           <h3>Filter Periode</h3>
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <label className="text-[10px] uppercase tracking-wider font-bold text-slate-400 px-1">Mulai</label>
+        <div className="flex items-end justify-between gap-2 flex-nowrap">
+          <div className="space-y-1 min-w-0 flex-1 basis-[48%]">
+            <label className="block truncate px-1 text-[10px] sm:text-xs uppercase tracking-wider font-bold text-slate-400">Mulai</label>
             <input
               type="date"
               value={startDate}
+              max={endDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500"
+              className="w-full min-w-0 px-2.5 py-2.5 text-xs sm:px-4 sm:py-3 sm:text-sm bg-slate-50 border-none rounded-xl font-medium focus:ring-2 focus:ring-indigo-500"
             />
           </div>
-          <div className="space-y-1.5">
-            <label className="text-[10px] uppercase tracking-wider font-bold text-slate-400 px-1">Selesai</label>
+          <div className="space-y-1 min-w-0 flex-1 basis-[48%]">
+            <label className="block truncate px-1 text-[10px] sm:text-xs uppercase tracking-wider font-bold text-slate-400">Selesai</label>
             <input
               type="date"
               value={endDate}
+              min={startDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500"
+              className="w-full min-w-0 px-2.5 py-2.5 text-xs sm:px-4 sm:py-3 sm:text-sm bg-slate-50 border-none rounded-xl font-medium focus:ring-2 focus:ring-indigo-500"
             />
           </div>
         </div>
