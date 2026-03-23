@@ -1,4 +1,7 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "source": "/feedback/((?!general).*)",
+  "destination": "/api/feedback/general"
   "rewrites": [
     {
       "source": "/(.*\\.(ico|png|jpg|jpeg|svg|css|js|json|webmanifest))",
