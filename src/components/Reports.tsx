@@ -1,12 +1,19 @@
 import { useState, useEffect } from 'react';
-import { db, collection, query, where, onSnapshot } from '../firebase';
+import { db, collection, query, onSnapshot } from '../firebase';
 import { formatCurrency } from '../lib/utils';
 import { format, subMonths, startOfDay, endOfDay, parseISO, isWithinInterval } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Calendar, Download, TrendingUp, TrendingDown, PieChart as PieChartIcon, BarChart3 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Calendar, TrendingUp, TrendingDown, PieChart as PieChartIcon, BarChart3 } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { Skeleton } from './Skeleton';
+
+type MonthlyExpenseItem = {
+  monthKey: string;
+  monthLabel: string;
+  totalExpense: number;
+  percentageOfPeriodExpense: number;
+  transactionCount: number;
+};
 
 export function Reports({ householdId }: { householdId: string }) {
   const [startDate, setStartDate] = useState(format(subMonths(new Date(), 1), 'yyyy-MM-dd'));
@@ -17,7 +24,7 @@ export function Reports({ householdId }: { householdId: string }) {
   useEffect(() => {
     const path = `households/${householdId}/transactions`;
     const q = query(collection(db, path));
-    
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -47,9 +54,55 @@ export function Reports({ householdId }: { householdId: string }) {
     return acc;
   }, { totalIncome: 0, totalExpense: 0 });
 
+  const expenseTransactions = filteredTransactions.filter(t => t.type === 'expense');
+
+  const monthlyExpenseData = Object.values(
+    expenseTransactions.reduce<Record<string, Omit<MonthlyExpenseItem, 'percentageOfPeriodExpense'>>>((acc, curr) => {
+      const monthDate = parseISO(curr.date);
+      const monthKey = format(monthDate, 'yyyy-MM');
+
+      if (!acc[monthKey]) {
+        acc[monthKey] = {
+          monthKey,
+          monthLabel: format(monthDate, 'MMM yyyy'),
+          totalExpense: 0,
+          transactionCount: 0,
+        };
+      }
+
+      acc[monthKey].totalExpense += curr.amount;
+      acc[monthKey].transactionCount += 1;
+      return acc;
+    }, {})
+  )
+    .sort((a, b) => a.monthKey.localeCompare(b.monthKey))
+    .map((item) => ({
+      ...item,
+      percentageOfPeriodExpense: totalExpense > 0 ? (item.totalExpense / totalExpense) * 100 : 0,
+    }));
+
+  const highestExpenseMonth = monthlyExpenseData.reduce<MonthlyExpenseItem | null>((highest, item) => {
+    if (!highest || item.totalExpense > highest.totalExpense) {
+      return item;
+    }
+
+    return highest;
+  }, null);
+
+  const averageMonthlyExpense = monthlyExpenseData.length > 0 ? totalExpense / monthlyExpenseData.length : 0;
+  const latestMonth = monthlyExpenseData[monthlyExpenseData.length - 1];
+  const previousMonth = monthlyExpenseData[monthlyExpenseData.length - 2];
+  const latestMonthDelta = latestMonth && previousMonth
+    ? latestMonth.totalExpense - previousMonth.totalExpense
+    : null;
+  const latestMonthDeltaLabel = latestMonthDelta === null
+    ? 'Belum ada pembanding bulan sebelumnya.'
+    : latestMonthDelta === 0
+      ? `Stabil dibanding ${previousMonth?.monthLabel}.`
+      : `${latestMonthDelta > 0 ? '+' : '-'}${formatCurrency(Math.abs(latestMonthDelta))} vs ${previousMonth?.monthLabel}`;
+
   // Data for Category Pie Chart
-  const categoryData = filteredTransactions
-    .filter(t => t.type === 'expense')
+  const categoryData = expenseTransactions
     .reduce((acc: any[], curr) => {
       const existing = acc.find(a => a.name === curr.category);
       if (existing) existing.value += curr.amount;
@@ -141,6 +194,103 @@ export function Reports({ householdId }: { householdId: string }) {
         </div>
       </div>
 
+      {/* Monthly Expense Breakdown */}
+      <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-slate-900 font-semibold mb-2">
+              <TrendingDown className="w-5 h-5 text-rose-500" />
+              <h3>Pengeluaran per Bulan</h3>
+            </div>
+            <p className="text-sm text-slate-500">
+              {monthlyExpenseData.length <= 1
+                ? 'Periode aktif hanya mencakup satu bulan, jadi seluruh pengeluaran diringkas dalam satu entry.'
+                : 'Pantau kontribusi setiap bulan terhadap total pengeluaran pada periode filter aktif.'}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 sm:max-w-xs">
+            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-rose-500">Total periode</p>
+            <p className="mt-1 text-lg font-bold text-rose-950">{formatCurrency(totalExpense)}</p>
+            <p className="mt-1 text-xs text-rose-700">Dihitung dari transaksi expense dalam rentang tanggal saat ini.</p>
+          </div>
+        </div>
+
+        {monthlyExpenseData.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">Bulan tertinggi</p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">{highestExpenseMonth?.monthLabel}</p>
+                <p className="mt-1 text-base font-bold text-slate-950">{highestExpenseMonth ? formatCurrency(highestExpenseMonth.totalExpense) : '-'}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">Rata-rata per bulan</p>
+                <p className="mt-2 text-base font-bold text-slate-950">{formatCurrency(averageMonthlyExpense)}</p>
+                <p className="mt-1 text-xs text-slate-500">{monthlyExpenseData.length} bulan dengan pengeluaran pada periode ini.</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">Selisih bulan terakhir</p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">{latestMonth?.monthLabel ?? '-'}</p>
+                <p className={`mt-1 text-base font-bold ${latestMonthDelta !== null && latestMonthDelta > 0 ? 'text-rose-600' : latestMonthDelta !== null && latestMonthDelta < 0 ? 'text-emerald-600' : 'text-slate-950'}`}>
+                  {latestMonthDelta === null ? '—' : formatCurrency(Math.abs(latestMonthDelta))}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">{latestMonthDeltaLabel}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {monthlyExpenseData.map((item, index) => {
+                const previousItem = monthlyExpenseData[index - 1];
+                const delta = previousItem ? item.totalExpense - previousItem.totalExpense : null;
+
+                return (
+                  <div key={item.monthKey} className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm shadow-slate-100/80">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">{item.monthKey}</p>
+                        <h4 className="mt-1 text-sm font-semibold text-slate-900">{item.monthLabel}</h4>
+                        <p className="mt-1 text-xs text-slate-500">{item.transactionCount} transaksi pengeluaran</p>
+                      </div>
+                      <div className="text-left sm:text-right">
+                        <p className="text-base font-bold text-slate-950">{formatCurrency(item.totalExpense)}</p>
+                        <p className="mt-1 text-sm font-semibold text-rose-600">{item.percentageOfPeriodExpense.toFixed(1)}% dari total periode</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-rose-400 via-rose-500 to-orange-400"
+                        style={{ width: `${Math.max(item.percentageOfPeriodExpense, 6)}%` }}
+                      />
+                    </div>
+
+                    <div className="mt-3 flex flex-col gap-1 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+                      <span>
+                        {monthlyExpenseData.length === 1
+                          ? 'Semua pengeluaran pada filter aktif terjadi di bulan ini.'
+                          : delta === null
+                            ? 'Ini adalah bulan pertama pada rentang filter aktif.'
+                            : delta === 0
+                              ? 'Nominalnya sama dengan bulan sebelumnya.'
+                              : `${delta > 0 ? 'Naik' : 'Turun'} ${formatCurrency(Math.abs(delta))} dibanding ${previousItem?.monthLabel}.`}
+                      </span>
+                      <span className="font-medium text-slate-600">{item.percentageOfPeriodExpense.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center">
+            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">Belum ada pengeluaran bulanan</p>
+            <p className="mt-2 text-sm font-semibold text-slate-700">Tidak ada transaksi expense pada periode filter aktif.</p>
+            <p className="mt-1 text-sm text-slate-500">Coba perluas rentang tanggal atau tambahkan transaksi pengeluaran baru untuk melihat ringkasan bulanan di sini.</p>
+          </div>
+        )}
+      </div>
+
       {/* Expense by Category */}
       <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
         <div className="flex items-center justify-between mb-6">
@@ -149,7 +299,7 @@ export function Reports({ householdId }: { householdId: string }) {
             <h3>Pengeluaran per Kategori</h3>
           </div>
         </div>
-        
+
         {categoryData.length > 0 ? (
           <div className="w-full">
             <div className="h-[240px] w-full min-w-0 min-h-0">
@@ -168,7 +318,7 @@ export function Reports({ householdId }: { householdId: string }) {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value: number) => formatCurrency(value)}
                     contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                   />
@@ -200,19 +350,19 @@ export function Reports({ householdId }: { householdId: string }) {
           <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <BarChart data={dailyData}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis 
-                dataKey="date" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{ fontSize: 10, fill: '#94a3b8' }} 
+              <XAxis
+                dataKey="date"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 10, fill: '#94a3b8' }}
               />
-              <YAxis 
-                axisLine={false} 
-                tickLine={false} 
+              <YAxis
+                axisLine={false}
+                tickLine={false}
                 tick={{ fontSize: 10, fill: '#94a3b8' }}
                 tickFormatter={(value) => `Rp${value/1000}k`}
               />
-              <Tooltip 
+              <Tooltip
                 formatter={(value: number) => formatCurrency(value)}
                 contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
               />
