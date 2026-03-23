@@ -1,6 +1,6 @@
 import type { User } from 'firebase/auth';
 
-export type SupportedAuthProvider = 'google' | 'password' | 'anonymous';
+export type SupportedAuthProvider = 'google' | 'password';
 
 interface UserProfileOptions {
   currentHouseholdId?: string;
@@ -8,10 +8,6 @@ interface UserProfileOptions {
 }
 
 function getAuthProvider(user: User): SupportedAuthProvider {
-  if (user.isAnonymous) {
-    return 'anonymous';
-  }
-
   if (user.providerData.some((provider) => provider.providerId === 'google.com')) {
     return 'google';
   }
@@ -20,8 +16,7 @@ function getAuthProvider(user: User): SupportedAuthProvider {
 }
 
 function getDisplayName(user: User, displayName?: string | null) {
-  const fallbackName = user.isAnonymous ? 'Guest' : 'Pengguna';
-  const candidates = [displayName, user.displayName, user.email, fallbackName];
+  const candidates = [displayName, user.displayName, user.email, 'Pengguna'];
 
   return candidates
     .map((value) => value?.trim())
@@ -33,7 +28,6 @@ export function buildUserProfileData(user: User, options: UserProfileOptions = {
     uid: user.uid,
     displayName: getDisplayName(user, options.displayName),
     authProvider: getAuthProvider(user),
-    isGuest: user.isAnonymous,
     ...(options.currentHouseholdId ? { currentHouseholdId: options.currentHouseholdId } : {}),
     ...(user.email?.trim() ? { email: user.email.trim() } : {}),
   };

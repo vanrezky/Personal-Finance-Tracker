@@ -8,7 +8,6 @@ import {
   getDoc,
   loginWithGoogle,
   setDoc,
-  signInAnonymously,
   signInWithEmailAndPassword,
   updateProfile,
 } from '../firebase';
@@ -21,7 +20,6 @@ import {
   LogIn,
   Mail,
   Plus,
-  Sparkles,
   UserRound,
   Users,
   Wallet,
@@ -32,7 +30,7 @@ import { cn } from '../lib/utils';
 
 type AuthScreen = 'welcome' | 'email-signin' | 'email-signup' | 'post-login-choice';
 type SetupMode = 'choice' | 'create' | 'join';
-type LoadingAction = 'google' | 'guest' | 'email-signin' | 'email-signup' | 'profile' | 'household' | null;
+type LoadingAction = 'google' | 'email-signin' | 'email-signup' | 'profile' | 'household' | null;
 
 type EmailFormState = {
   displayName: string;
@@ -95,7 +93,7 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
   const [error, setError] = useState('');
 
   const isBusy = loadingAction !== null;
-  const requiresProfileCompletion = !!user && (!displayName.trim() || (user.isAnonymous && !user.displayName));
+  const requiresProfileCompletion = !!user && !displayName.trim();
   const householdSubmitDisabled =
     isBusy ||
     !displayName.trim() ||
@@ -169,17 +167,13 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
     if (!currentUser) return;
 
     const path = `users/${currentUser.uid}`;
-    const resolvedDisplayName = nextDisplayName ?? currentUser.displayName ?? displayName.trim() ?? '';
 
     try {
       await setDoc(
         doc(db, path),
-        {
-          uid: currentUser.uid,
-          email: currentUser.email || '',
-          displayName: resolvedDisplayName,
-          isAnonymous: currentUser.isAnonymous,
-        },
+        buildUserProfileData(currentUser, {
+          displayName: nextDisplayName ?? currentUser.displayName ?? displayName.trim(),
+        }),
         { merge: true },
       );
     } catch (err) {
@@ -212,37 +206,24 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
 
     try {
       const result = await loginWithGoogle();
-      const u = result.user;
-      setDisplayName(u.displayName || '');
-      
-      // Create or update user profile
-      const path = `users/${u.uid}`;
-      try {
-        await setDoc(doc(db, path), buildUserProfileData(u, {
-          displayName: u.displayName,
-        }), { merge: true });
-        
-        // Check if user already has a household to redirect immediately
-        await checkUserHousehold(u.uid);
-      } catch (err) {
-        handleFirestoreError(err, OperationType.WRITE, path);
-      await syncUserProfile(result.user, result.user.displayName || '');
+      const resolvedName = result.user.displayName || '';
+      const path = `users/${result.user.uid}`;
+
+      setDisplayName(resolvedName);
+      await setDoc(
+        doc(db, path),
+        buildUserProfileData(result.user, {
+          displayName: resolvedName,
+        }),
+        { merge: true },
+      );
+
+      const profile = await loadUserProfile(result.user.uid);
+      if (profile.currentHouseholdId) {
+        onComplete(profile.currentHouseholdId);
+        return;
       }
-    } catch (err: any) {
-      setError(mapFirebaseAuthError(err));
-    } finally {
-      setLoadingAction(null);
-    }
-  };
 
-  const handleGuestLogin = async () => {
-    setError('');
-    setLoadingAction('guest');
-
-    try {
-      const result = await signInAnonymously(auth);
-      setDisplayName('');
-      await syncUserProfile(result.user, '');
       setAuthScreen('post-login-choice');
     } catch (err: any) {
       setError(mapFirebaseAuthError(err));
@@ -376,13 +357,6 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
         });
       }
       
-      // Update user's profile and current household
-      await setDoc(doc(db, userPath), buildUserProfileData(user, {
-        currentHouseholdId: hid,
-        displayName,
-      }), { merge: true });
-      
-
       const resolvedDisplayName = displayName.trim() || user.displayName || user.email || '';
 
       if (resolvedDisplayName && user.displayName !== resolvedDisplayName) {
@@ -391,12 +365,10 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
 
       await setDoc(
         doc(db, userPath),
-        {
+        buildUserProfileData(user, {
           currentHouseholdId: hid,
           displayName: resolvedDisplayName,
-          email: user.email || '',
-          isAnonymous: user.isAnonymous,
-        },
+        }),
         { merge: true },
       );
 
@@ -439,26 +411,10 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
 
       <div className="relative py-2 text-center text-xs font-medium uppercase tracking-[0.2em] text-slate-400">
         <span className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-slate-200" />
-        <span className="relative bg-white px-4">atau lanjut dengan</span>
+        <span className="relative bg-white px-4">atau</span>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <button
-          type="button"
-          onClick={handleGuestLogin}
-          disabled={isBusy}
-          className="rounded-3xl border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <div className="mb-4 flex items-center justify-between">
-            <div className="rounded-2xl bg-amber-500 p-3 text-white">
-              {loadingAction === 'guest' ? <LoadingSpinner /> : <Sparkles className="h-5 w-5" />}
-            </div>
-            <ChevronRight className="h-5 w-5 text-amber-400" />
-          </div>
-          <h3 className="font-semibold text-slate-900">Masuk sebagai Guest</h3>
-          <p className="mt-1 text-sm text-slate-500">Cocok untuk coba dulu. Nama tampilan bisa Anda isi setelah berhasil masuk.</p>
-        </button>
-
+      <div>
         <button
           type="button"
           onClick={() => {
@@ -466,7 +422,7 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
             setAuthScreen('email-signin');
           }}
           disabled={isBusy}
-          className="rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <div className="mb-4 flex items-center justify-between">
             <div className="rounded-2xl bg-indigo-600 p-3 text-white">
@@ -742,7 +698,7 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">Finance Sync</h1>
           <p className="mt-2 text-sm text-slate-500 md:text-base">
-            Catat keuangan bersama pasangan secara real-time dengan login yang lebih fleksibel.
+            Catat keuangan bersama pasangan secara real-time dengan login Google atau email.
           </p>
         </div>
 
@@ -759,9 +715,7 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
                 <p className="text-sm font-medium text-indigo-600">Sudah berhasil masuk</p>
                 <h2 className="mt-1 text-xl font-bold text-slate-900">Halo, {greetingLabel} 👋</h2>
                 <p className="mt-2 text-sm text-slate-500">
-                  {user.isAnonymous
-                    ? 'Anda sedang memakai mode guest. Isi nama tampilan agar catatan Anda tetap mudah dikenali.'
-                    : 'Langkah berikutnya, pilih apakah ingin membuat household baru atau bergabung ke household yang sudah ada.'}
+                  Langkah berikutnya, pilih apakah ingin membuat household baru atau bergabung ke household yang sudah ada.
                 </p>
               </section>
 

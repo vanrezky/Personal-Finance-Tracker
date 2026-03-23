@@ -65,7 +65,6 @@ Buka **Firebase Console → Authentication → Sign-in method**, lalu aktifkan:
 
 - **Google**
 - **Email/Password**
-- **Anonymous**
 
 > Disarankan menyimpan konfigurasi Auth ini sejak awal agar environment lokal, staging, dan production konsisten.
 
@@ -100,15 +99,7 @@ VITE_FIREBASE_FIRESTORE_DATABASE_ID=(default)
 GEMINI_API_KEY=
 ```
 
-### 3. Catatan akun guest / anonymous
-
-Jika user masuk sebagai **guest/anonymous**, tetap buat dokumen profil di koleksi:
-
-- `users/{uid}`
-
-Dengan begitu, alur aplikasi tetap konsisten untuk lookup profil, household aktif, dan sinkronisasi data pengguna.
-
-### 4. Ringkasan struktur Firestore
+### 3. Ringkasan struktur Firestore
 
 Struktur data utama yang digunakan aplikasi:
 
