@@ -3,6 +3,7 @@ import { auth, loginWithGoogle, db, doc, setDoc, getDoc } from '../firebase';
 import { motion } from 'motion/react';
 import { Wallet, LogIn, Users, Plus } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { buildUserProfileData } from '../lib/userProfile';
 
 export function AuthSetup({ onComplete }: { onComplete: (householdId: string) => void }) {
   const [user, setUser] = useState(auth.currentUser);
@@ -64,11 +65,9 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
       // Create or update user profile
       const path = `users/${u.uid}`;
       try {
-        await setDoc(doc(db, path), {
-          uid: u.uid,
-          email: u.email,
+        await setDoc(doc(db, path), buildUserProfileData(u, {
           displayName: u.displayName,
-        }, { merge: true });
+        }), { merge: true });
         
         // Check if user already has a household to redirect immediately
         await checkUserHousehold(u.uid);
@@ -125,10 +124,10 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
       }
       
       // Update user's profile and current household
-      await setDoc(doc(db, userPath), {
+      await setDoc(doc(db, userPath), buildUserProfileData(user, {
         currentHouseholdId: hid,
-        displayName: displayName || user.displayName || user.email
-      }, { merge: true });
+        displayName,
+      }), { merge: true });
       
       onComplete(hid);
     } catch (err: any) {
