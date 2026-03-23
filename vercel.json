@@ -1,19 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/(.*\\.(ico|png|jpg|jpeg|svg|css|js|json|webmanifest))",
-      "destination": "/$1"
-    },
-    {
-      "source": "/(sw.js)",
-      "destination": "/sw.js"
-    },
-    {
-      "source": "/(workbox-.*\\.js)",
-      "destination": "/$1"
-    },
-    {
-      "source": "/(.*)",
+      "source": "/:path((?!.*\\..*).*)",
       "destination": "/index.html"
     }
   ]
