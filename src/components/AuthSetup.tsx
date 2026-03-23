@@ -27,6 +27,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { buildUserProfileData } from '../lib/userProfile';
 import { cn } from '../lib/utils';
 
 type AuthScreen = 'welcome' | 'email-signin' | 'email-signup' | 'post-login-choice';
@@ -211,7 +212,22 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
 
     try {
       const result = await loginWithGoogle();
+      const u = result.user;
+      setDisplayName(u.displayName || '');
+      
+      // Create or update user profile
+      const path = `users/${u.uid}`;
+      try {
+        await setDoc(doc(db, path), buildUserProfileData(u, {
+          displayName: u.displayName,
+        }), { merge: true });
+        
+        // Check if user already has a household to redirect immediately
+        await checkUserHousehold(u.uid);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.WRITE, path);
       await syncUserProfile(result.user, result.user.displayName || '');
+      }
     } catch (err: any) {
       setError(mapFirebaseAuthError(err));
     } finally {
@@ -359,6 +375,13 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
           payday: parseInt(payday, 10),
         });
       }
+      
+      // Update user's profile and current household
+      await setDoc(doc(db, userPath), buildUserProfileData(user, {
+        currentHouseholdId: hid,
+        displayName,
+      }), { merge: true });
+      
 
       const resolvedDisplayName = displayName.trim() || user.displayName || user.email || '';
 

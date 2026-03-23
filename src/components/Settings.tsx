@@ -3,6 +3,7 @@ import { auth, db, doc, setDoc, getDoc } from '../firebase';
 import { motion } from 'motion/react';
 import { User, Calendar, Save, CheckCircle2, Copy, Users, LogOut } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { buildUserProfileData } from '../lib/userProfile';
 import { cn } from '../lib/utils';
 import { Skeleton } from './Skeleton';
 
@@ -50,9 +51,9 @@ export function Settings({ householdId, onLogout }: { householdId: string, onLog
 
     try {
       // Update user profile
-      await setDoc(doc(db, 'users', auth.currentUser.uid), {
-        displayName
-      }, { merge: true });
+      await setDoc(doc(db, 'users', auth.currentUser.uid), buildUserProfileData(auth.currentUser, {
+        displayName,
+      }), { merge: true });
 
       // Only owner can update household settings
       if (isOwner) {
