@@ -19,152 +19,106 @@ interface SettingsViewProps {
 
 export function SettingsSkeleton() {
   return (
-    <div className="space-y-6">
-      <div className="space-y-6 rounded-3xl border border-slate-100 bg-white p-6">
-        <Skeleton className="h-7 w-32" />
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-12 w-full rounded-2xl" />
-        </div>
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-12 w-full rounded-2xl" />
-        </div>
-        <Skeleton className="h-14 w-full rounded-2xl" />
-      </div>
-      <Skeleton className="h-40 w-full rounded-3xl" />
+    <div className="space-y-5">
+      <Skeleton className="h-44 w-full rounded-[1.8rem]" />
+      <Skeleton className="h-48 w-full rounded-[1.8rem]" />
+      <Skeleton className="h-16 w-full rounded-[1.4rem]" />
     </div>
   );
 }
 
-function SettingsFormSection({
+export function SettingsView({
   displayName,
   payday,
+  householdId,
   isOwner,
   saving,
   success,
+  copied,
   onDisplayNameChange,
   onPaydayChange,
   onSave,
-}: Omit<SettingsViewProps, 'householdId' | 'copied' | 'onCopyHouseholdId' | 'onLogout'>) {
+  onCopyHouseholdId,
+  onLogout,
+}: SettingsViewProps) {
   return (
-    <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
-      <h2 className="mb-6 text-xl font-bold text-slate-900">Pengaturan</h2>
+    <div className="space-y-5 pb-6">
+      <section className="moni-card p-5 sm:p-6">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-violet-400">Pengaturan</p>
+        <h2 className="mt-2 text-[1.9rem] font-semibold tracking-tight text-[color:var(--moni-text)]">Profil & preferensi household</h2>
+        <p className="mt-2 max-w-lg text-sm leading-6 text-[color:var(--moni-subtle)]">Atur nama tampilan, tanggal gajian, dan bagikan ID household dengan tampilan yang lebih ringan.</p>
+      </section>
 
-      <form onSubmit={onSave} className="space-y-6">
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-            <User className="h-4 w-4 text-indigo-600" />
-            Nama Tampilan
-          </label>
-          <input
-            type="text"
-            required
-            value={displayName}
-            onChange={(event) => onDisplayNameChange(event.target.value)}
-            className="w-full rounded-2xl border-none bg-slate-50 px-4 py-3 text-slate-900 transition-shadow focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
+      <section className="moni-card p-5 sm:p-6">
+        <form onSubmit={onSave} className="space-y-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 px-1 text-sm font-medium text-[color:var(--moni-subtle)]">
+                <User className="h-4 w-4 text-violet-400" /> Nama tampilan
+              </label>
+              <input type="text" required value={displayName} onChange={(event) => onDisplayNameChange(event.target.value)} className="moni-input" />
+            </div>
 
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-            <Calendar className="h-4 w-4 text-indigo-600" />
-            Tanggal Gajian
-          </label>
-          <p className="mb-1 text-[10px] text-slate-500">
-            Siklus bulanan di Dashboard akan dimulai dari tanggal ini.
-            {!isOwner && (
-              <span className="mt-1 block font-medium text-rose-500">
-                * Hanya pemilik (pembuat ID) yang bisa mengubah tanggal gajian.
-              </span>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 px-1 text-sm font-medium text-[color:var(--moni-subtle)]">
+                <Calendar className="h-4 w-4 text-violet-400" /> Tanggal gajian
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="31"
+                required
+                disabled={!isOwner}
+                value={payday}
+                onChange={(event) => onPaydayChange(event.target.value)}
+                className={cn('moni-input', !isOwner && 'cursor-not-allowed opacity-60')}
+              />
+              <p className="px-1 text-xs leading-5 text-[color:var(--moni-subtle)]">
+                {!isOwner ? 'Hanya pemilik household yang bisa mengubah tanggal gajian.' : 'Tanggal ini dipakai untuk menghitung siklus bulanan di dashboard.'}
+              </p>
+            </div>
+          </div>
+
+          <button type="submit" disabled={saving} className="moni-primary-button w-full justify-center">
+            {saving ? (
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+            ) : success ? (
+              <>
+                <CheckCircle2 className="h-5 w-5" /> Tersimpan
+              </>
+            ) : (
+              <>
+                <Save className="h-5 w-5" /> Simpan perubahan
+              </>
             )}
-          </p>
-          <input
-            type="number"
-            min="1"
-            max="31"
-            required
-            disabled={!isOwner}
-            value={payday}
-            onChange={(event) => onPaydayChange(event.target.value)}
-            className={cn(
-              'w-full rounded-2xl border-none bg-slate-50 px-4 py-3 text-slate-900 transition-shadow focus:ring-2 focus:ring-indigo-500',
-              !isOwner && 'cursor-not-allowed opacity-60'
-            )}
-          />
+          </button>
+        </form>
+      </section>
+
+      <section className="moni-card-soft p-5 sm:p-6">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-[1rem] bg-[#fff1f8] text-fuchsia-500">
+            <Users className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold tracking-tight text-[color:var(--moni-text)]">ID household</h3>
+            <p className="text-sm leading-6 text-[color:var(--moni-subtle)]">Bagikan kode ini ke pasangan atau teman agar bisa melihat catatan yang sama.</p>
+          </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={saving}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 py-4 font-semibold text-white transition-all hover:bg-slate-800 active:scale-[0.98]"
-        >
-          {saving ? (
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-          ) : success ? (
-            <>
-              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-              Tersimpan
-            </>
-          ) : (
-            <>
-              <Save className="h-5 w-5" />
-              Simpan Perubahan
-            </>
-          )}
-        </button>
-      </form>
-    </div>
-  );
-}
-
-function HouseholdShareCard({ householdId, copied, onCopyHouseholdId }: Pick<SettingsViewProps, 'householdId' | 'copied' | 'onCopyHouseholdId'>) {
-  return (
-    <div className="rounded-3xl border border-indigo-100 bg-indigo-50 p-6">
-      <div className="mb-2 flex items-center gap-2 font-bold text-indigo-700">
-        <Users className="h-5 w-5" />
-        <h3>ID Keuangan Keluarga</h3>
-      </div>
-      <p className="mb-4 text-xs text-indigo-600/70">
-        Bagikan ID ini kepada pasangan Anda agar mereka dapat bergabung dan melihat catatan keuangan yang sama.
-      </p>
-      <div className="flex items-center gap-2">
-        <div className="flex-1 rounded-2xl border border-indigo-200 bg-white p-4 text-center font-mono font-bold tracking-widest text-slate-900">
-          {householdId}
+        <div className="flex items-center gap-2">
+          <div className="flex-1 rounded-[1.35rem] border border-white/80 bg-white px-4 py-4 text-center font-mono text-lg font-semibold tracking-[0.25em] text-[color:var(--moni-text)] shadow-[0_10px_30px_rgba(125,104,196,0.08)]">
+            {householdId}
+          </div>
+          <button onClick={onCopyHouseholdId} className="flex h-14 w-14 items-center justify-center rounded-[1.2rem] bg-white text-violet-500 shadow-[0_10px_30px_rgba(125,104,196,0.08)] transition hover:-translate-y-0.5" title="Salin ID">
+            {copied ? <CheckCircle2 className="h-5 w-5 text-emerald-500" /> : <Copy className="h-5 w-5" />}
+          </button>
         </div>
-        <button
-          onClick={onCopyHouseholdId}
-          className="relative rounded-2xl border border-indigo-200 bg-white p-4 text-indigo-600 transition-colors hover:bg-indigo-50"
-          title="Salin ID"
-        >
-          {copied ? <CheckCircle2 className="h-6 w-6 text-emerald-500" /> : <Copy className="h-6 w-6" />}
-        </button>
-      </div>
-    </div>
-  );
-}
+      </section>
 
-function SettingsFooter({ onLogout }: Pick<SettingsViewProps, 'onLogout'>) {
-  return (
-    <div className="pt-4">
-      <button
-        onClick={onLogout}
-        className="flex w-full items-center justify-center gap-2 rounded-3xl border border-rose-100 bg-rose-50 px-6 py-4 font-bold text-rose-600 transition-colors hover:bg-rose-100"
-      >
-        <LogOut className="h-5 w-5" />
-        Keluar dari Akun
+      <button onClick={onLogout} className="flex w-full items-center justify-center gap-2 rounded-[1.5rem] border border-rose-100 bg-rose-50 px-6 py-4 font-semibold text-rose-500 transition hover:bg-rose-100">
+        <LogOut className="h-5 w-5" /> Keluar dari akun
       </button>
-      <p className="mt-4 text-center text-[10px] text-slate-400">Finance Sync v1.0.0</p>
-    </div>
-  );
-}
-
-export function SettingsView(props: SettingsViewProps) {
-  return (
-    <div className="space-y-6">
-      <SettingsFormSection {...props} />
-      <HouseholdShareCard householdId={props.householdId} copied={props.copied} onCopyHouseholdId={props.onCopyHouseholdId} />
-      <SettingsFooter onLogout={props.onLogout} />
     </div>
   );
 }

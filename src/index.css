@@ -1,11 +1,91 @@
 @import "tailwindcss";
 
+:root {
+  color-scheme: light;
+  --moni-bg: #f6f2ff;
+  --moni-surface: rgba(255, 255, 255, 0.88);
+  --moni-surface-strong: #ffffff;
+  --moni-border: rgba(157, 127, 255, 0.14);
+  --moni-text: #221b49;
+  --moni-subtle: #7f78a4;
+  --moni-accent: #6f6df4;
+  --moni-accent-2: #ef7cc2;
+  --moni-accent-3: #ffcf6f;
+  --moni-success: #4bcf9a;
+  --moni-danger: #f77c8f;
+}
+
+html {
+  background:
+    radial-gradient(circle at top left, rgba(243, 162, 218, 0.35), transparent 28%),
+    radial-gradient(circle at top right, rgba(111, 109, 244, 0.28), transparent 32%),
+    linear-gradient(180deg, #f7f4ff 0%, #f4f7ff 42%, #fcfbff 100%);
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--moni-text);
+  background: transparent;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+#root {
+  min-height: 100vh;
+}
+
 @layer utilities {
   .hide-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
   .hide-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  .moni-shell {
+    @apply relative overflow-hidden rounded-[2rem] border border-white/70 bg-white/70 shadow-[0_20px_80px_rgba(125,104,196,0.18)] backdrop-blur-xl;
+  }
+
+  .moni-card {
+    @apply rounded-[1.75rem] border border-white/70 bg-white/80 shadow-[0_14px_45px_rgba(125,104,196,0.12)] backdrop-blur-xl;
+  }
+
+  .moni-card-soft {
+    @apply rounded-[1.5rem] border border-white/70 bg-white/65 shadow-[0_12px_32px_rgba(125,104,196,0.08)] backdrop-blur-xl;
+  }
+
+  .moni-hero {
+    background: linear-gradient(135deg, #6f6df4 0%, #7f88ff 34%, #d27ce5 78%, #f6a0c8 100%);
+  }
+
+  .moni-hero-muted {
+    background: linear-gradient(135deg, rgba(111, 109, 244, 0.12) 0%, rgba(210, 124, 229, 0.15) 48%, rgba(255, 207, 111, 0.16) 100%);
+  }
+
+  .moni-outline-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-[color:var(--moni-border)] bg-white/80 px-4 py-2.5 text-sm font-semibold text-[color:var(--moni-text)] shadow-[0_6px_20px_rgba(125,104,196,0.08)] transition hover:-translate-y-0.5 hover:bg-white;
+  }
+
+  .moni-primary-button {
+    background: linear-gradient(135deg, #6f6df4 0%, #ef7cc2 100%);
+    @apply inline-flex items-center justify-center gap-2 rounded-[1.25rem] px-4 py-3.5 font-semibold text-white shadow-[0_12px_35px_rgba(151,103,218,0.32)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .moni-pill {
+    @apply inline-flex items-center rounded-full border border-white/70 bg-white/85 px-3 py-1.5 text-xs font-semibold text-[color:var(--moni-subtle)] shadow-[0_6px_20px_rgba(125,104,196,0.08)];
+  }
+
+  .moni-input {
+    @apply w-full rounded-[1.15rem] border border-transparent bg-white/90 px-4 py-3.5 text-[color:var(--moni-text)] shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] outline-none transition focus:border-fuchsia-200 focus:ring-4 focus:ring-fuchsia-100;
+  }
+
+  .moni-section-title {
+    @apply text-lg font-semibold tracking-tight text-[color:var(--moni-text)];
+  }
+
+  .moni-subtitle {
+    @apply text-sm leading-6 text-[color:var(--moni-subtle)];
   }
 }

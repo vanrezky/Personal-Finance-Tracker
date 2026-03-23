@@ -1,61 +1,78 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import {
+  Activity,
+  CloudOff,
+  Download,
+  Home,
+  ListOrdered,
+  MoreVertical,
+  Plus,
+  PlusSquare,
+  Settings as SettingsIcon,
+  Share,
+  Sparkles,
+  WalletCards,
+  X,
+} from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import { Dashboard } from './components/Dashboard';
 import { TransactionList } from './components/TransactionList';
 import { TransactionForm } from './components/TransactionForm';
 import { AuthSetup } from './components/AuthSetup';
 import { Reports } from './components/Reports';
 import { Settings } from './components/Settings';
-import { auth, db, logout, onSnapshot, collection, query, orderBy, setDoc, doc, getDoc } from './firebase';
-import { Plus, Activity, ListOrdered, LogOut, Download, CloudOff, PieChart, Settings as SettingsIcon, Share, PlusSquare, X, MoreVertical, Sparkles } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { Skeleton } from './components/Skeleton';
+import { auth, db, logout, onSnapshot, collection, query, orderBy, doc, getDoc } from './firebase';
 import { cn } from './lib/utils';
 import { handleFirestoreError, OperationType } from './lib/firestore-errors';
-import { Skeleton } from './components/Skeleton';
+
+const tabs = [
+  { key: 'dashboard', label: 'Beranda', icon: Home },
+  { key: 'history', label: 'Catatan', icon: ListOrdered },
+  { key: 'reports', label: 'Analitik', icon: Activity },
+  { key: 'settings', label: 'Profil', icon: SettingsIcon },
+] as const;
 
 export default function App() {
   const [householdId, setHouseholdId] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'history' | 'reports' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<(typeof tabs)[number]['key']>('dashboard');
   const [isLoaded, setIsLoaded] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [alertMessage, setAlertMessage] = useState<{title: string, message: string} | null>(null);
+  const [alertMessage, setAlertMessage] = useState<{ title: string; message: string } | null>(null);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [isIosDevice, setIsIosDevice] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [showMiniInfoBar, setShowMiniInfoBar] = useState(false);
 
   useEffect(() => {
-    // Detect iOS
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isIos = /iphone|ipad|ipod/.test(userAgent);
     setIsIosDevice(isIos);
 
-    // Detect standalone
-    const isStandAlone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
-    setIsStandalone(!!isStandAlone);
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+    setIsStandalone(Boolean(standalone));
 
-    // For iOS, show the mini infobar after a short delay since beforeinstallprompt doesn't fire
-    if (isIos && !isStandAlone) {
-      const timer = setTimeout(() => {
-        setShowMiniInfoBar(true);
-      }, 3000);
+    if (isIos && !standalone) {
+      const timer = setTimeout(() => setShowMiniInfoBar(true), 3000);
       return () => clearTimeout(timer);
     }
   }, []);
 
   useEffect(() => {
-    const handleBeforeInstallPrompt = (e: any) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
+    const handleBeforeInstallPrompt = (event: any) => {
+      event.preventDefault();
+      setDeferredPrompt(event);
       setShowMiniInfoBar(true);
     };
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    
+
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
@@ -69,23 +86,55 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
-        // Fetch user's household
         const path = `users/${user.uid}`;
         try {
           const userDoc = await getDoc(doc(db, path));
           if (userDoc.exists() && userDoc.data().currentHouseholdId) {
             setHouseholdId(userDoc.data().currentHouseholdId);
           }
-        } catch (err) {
-          handleFirestoreError(err, OperationType.GET, path);
+        } catch (error) {
+          handleFirestoreError(error, OperationType.GET, path);
         }
       } else {
         setHouseholdId(null);
       }
       setIsLoaded(true);
     });
+
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!householdId) return;
+
+    const path = `households/${householdId}/transactions`;
+    const transactionsQuery = query(collection(db, path), orderBy('createdAt', 'desc'));
+    let isInitialLoad = true;
+
+    const unsubscribe = onSnapshot(
+      transactionsQuery,
+      (snapshot) => {
+        if (isInitialLoad) {
+          isInitialLoad = false;
+          return;
+        }
+
+        snapshot.docChanges().forEach((change) => {
+          if (change.type !== 'added') return;
+          const data = change.doc.data();
+          if (auth.currentUser && data.authorUid !== auth.currentUser.uid) {
+            setAlertMessage({
+              title: 'Update baru masuk',
+              message: `${data.authorName} menambahkan ${data.type === 'income' ? 'pemasukan' : 'pengeluaran'} sebesar Rp ${new Intl.NumberFormat('id-ID').format(data.amount)} pada kategori ${data.category}.`,
+            });
+          }
+        });
+      },
+      (error) => handleFirestoreError(error, OperationType.LIST, path)
+    );
+
+    return () => unsubscribe();
+  }, [householdId]);
 
   const handleLogout = async () => {
     await logout();
@@ -93,55 +142,16 @@ export default function App() {
     setShowLogoutConfirm(false);
   };
 
-  useEffect(() => {
-    if (!householdId) return;
-
-    const path = `households/${householdId}/transactions`;
-    const q = query(
-      collection(db, path),
-      orderBy('createdAt', 'desc')
-    );
-
-    let isInitialLoad = true;
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (isInitialLoad) {
-        isInitialLoad = false;
-        return;
-      }
-
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === 'added') {
-          const data = change.doc.data();
-          if (auth.currentUser && data.authorUid !== auth.currentUser.uid) {
-            setAlertMessage({
-              title: 'Transaksi Baru',
-              message: `${data.authorName} baru saja menambahkan transaksi ${data.type === 'income' ? 'pemasukan' : 'pengeluaran'} sebesar Rp ${new Intl.NumberFormat('id-ID').format(data.amount)} untuk ${data.category}.`
-            });
-          }
-        }
-      });
-    }, (err) => {
-      handleFirestoreError(err, OperationType.LIST, path);
-    });
-
-    return () => unsubscribe();
-  }, [householdId]);
-
   const renderContent = () => {
     if (!isLoaded) {
       return (
-        <div className="space-y-6">
-          <Skeleton className="h-32 w-full rounded-3xl" />
+        <div className="space-y-5">
+          <Skeleton className="h-40 w-full rounded-[1.75rem]" />
           <div className="grid grid-cols-2 gap-4">
-            <Skeleton className="h-24 w-full rounded-3xl" />
-            <Skeleton className="h-24 w-full rounded-3xl" />
+            <Skeleton className="h-28 w-full rounded-[1.5rem]" />
+            <Skeleton className="h-28 w-full rounded-[1.5rem]" />
           </div>
-          <div className="space-y-4">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-20 w-full rounded-2xl" />
-            <Skeleton className="h-20 w-full rounded-2xl" />
-          </div>
+          <Skeleton className="h-64 w-full rounded-[1.75rem]" />
         </div>
       );
     }
@@ -155,12 +165,12 @@ export default function App() {
         return <Dashboard householdId={householdId} />;
       case 'history':
         return (
-          <TransactionList 
-            householdId={householdId} 
+          <TransactionList
+            householdId={householdId}
             onEdit={(transaction) => {
               setEditingTransaction(transaction);
               setIsFormOpen(true);
-            }} 
+            }}
           />
         );
       case 'reports':
@@ -172,292 +182,174 @@ export default function App() {
     }
   };
 
+  const activeTabMeta = tabs.find((tab) => tab.key === activeTab);
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-24">
-      {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-slate-200/60 bg-slate-50/85 px-6 py-4 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">Finance</h1>
-              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold tracking-wider text-indigo-700">v1.1.0</span>
+    <div className="relative min-h-screen overflow-hidden px-4 pb-28 pt-4 text-[color:var(--moni-text)] sm:px-6">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(243,162,218,0.28),transparent_26%),radial-gradient(circle_at_top_right,rgba(111,109,244,0.18),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(255,207,111,0.2),transparent_28%)]" />
+
+      <div className="relative mx-auto max-w-2xl">
+        <div className="moni-shell min-h-[calc(100vh-2rem)] px-4 pb-28 pt-4 sm:px-5">
+          <header className="mb-6 flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <div className="flex h-11 w-11 items-center justify-center rounded-[1.2rem] bg-white/85 shadow-[0_10px_30px_rgba(125,104,196,0.15)]">
+                  <WalletCards className="h-5 w-5 text-violet-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.26em] text-violet-400">Moni</p>
+                  <h1 className="text-xl font-semibold tracking-tight">{householdId ? 'Pantau uang tanpa ribet' : 'Money tracker untuk berdua'}</h1>
+                </div>
+              </div>
+              <p className="mt-3 max-w-md text-sm leading-6 text-[color:var(--moni-subtle)]">
+                {householdId
+                  ? activeTab === 'dashboard'
+                    ? 'Ringkas, manis, dan gampang dipahami. Fokus ke apa yang benar-benar penting hari ini.'
+                    : `Halaman ${activeTabMeta?.label.toLowerCase()} dibuat lebih ringan supaya kamu cepat ambil keputusan.`
+                  : 'Catat pemasukan, pengeluaran, dan bagi akses household dalam satu tampilan yang lebih menyenangkan.'}
+              </p>
             </div>
-            <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
-              <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
-              <span>{activeTab === 'dashboard' ? 'Ringkasan cashflow hari ini' : 'Kelola keuangan rumah tangga tanpa ribet'}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-          {!isLoaded ? (
-            <Skeleton className="h-8 w-8 rounded-full" />
-          ) : (
-            <>
+
+            <div className="flex shrink-0 items-center gap-2">
               {!isOnline && (
-                <div className="flex items-center gap-1.5 text-rose-500 bg-rose-50 px-2.5 py-1 rounded-full text-xs font-medium">
-                  <CloudOff className="w-3.5 h-3.5" />
-                  <span>Offline</span>
+                <div className="moni-pill gap-2 border-rose-100 bg-rose-50/80 text-rose-500">
+                  <CloudOff className="h-3.5 w-3.5" /> Offline
                 </div>
               )}
-            </>
+              <div className="moni-pill hidden sm:inline-flex">v1.1.0</div>
+            </div>
+          </header>
+
+          {householdId && (
+            <div className="mb-6 flex flex-wrap items-center gap-2">
+              <div className="moni-pill gap-2 bg-violet-50/90 text-violet-600">
+                <Sparkles className="h-3.5 w-3.5" /> Desain baru lebih fokus
+              </div>
+              <div className="moni-pill">{activeTabMeta?.label}</div>
+            </div>
           )}
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={isLoaded ? activeTab : 'loading'}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.22 }}
+            >
+              {renderContent()}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {householdId && (
+        <nav className="fixed inset-x-0 bottom-4 z-40 px-4 sm:px-6">
+          <div className="mx-auto flex max-w-md items-center justify-between rounded-[1.7rem] border border-white/80 bg-white/88 p-2 shadow-[0_20px_50px_rgba(125,104,196,0.2)] backdrop-blur-xl">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={cn(
+                    'flex flex-1 flex-col items-center gap-1 rounded-[1.2rem] px-2 py-2 text-[11px] font-semibold transition-all',
+                    isActive ? 'moni-hero text-white shadow-[0_12px_30px_rgba(151,103,218,0.28)]' : 'text-[color:var(--moni-subtle)] hover:bg-white/80'
+                  )}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+            <button
+              onClick={() => {
+                setEditingTransaction(null);
+                setIsFormOpen(true);
+              }}
+              className="absolute left-1/2 top-1/2 flex h-15 w-15 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[1.35rem] border-4 border-[#f6f2ff] moni-hero text-white shadow-[0_20px_40px_rgba(151,103,218,0.35)] transition hover:scale-105"
+            >
+              <Plus className="h-7 w-7" />
+            </button>
           </div>
-        </div>
-      </header>
+        </nav>
+      )}
 
-      {/* Main Content */}
-      <main className="px-6 py-8 max-w-2xl mx-auto">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={isLoaded ? activeTab : 'loading'}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-          >
-            {renderContent()}
-          </motion.div>
-        </AnimatePresence>
-      </main>
-
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200/50 pb-safe">
-        <div className="flex items-center justify-around p-2 max-w-md mx-auto relative">
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            disabled={!isLoaded || !householdId}
-            className={cn(
-              "flex flex-1 flex-col items-center rounded-2xl p-3 transition-all duration-200",
-              activeTab === 'dashboard' ? "bg-slate-100 text-slate-900 shadow-sm shadow-slate-200/80" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600",
-              (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            <Activity className="w-6 h-6 mb-1" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider">Dashboard</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('history')}
-            disabled={!isLoaded || !householdId}
-            className={cn(
-              "flex flex-1 flex-col items-center rounded-2xl p-3 transition-all duration-200",
-              activeTab === 'history' ? "bg-slate-100 text-slate-900 shadow-sm shadow-slate-200/80" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600",
-              (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            <ListOrdered className="w-6 h-6 mb-1" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider">Riwayat</span>
-          </button>
-
-          {/* Floating Action Button Placeholder for spacing */}
-          <div className="w-16" />
-
-          <button
-            onClick={() => setActiveTab('reports')}
-            disabled={!isLoaded || !householdId}
-            className={cn(
-              "flex flex-1 flex-col items-center rounded-2xl p-3 transition-all duration-200",
-              activeTab === 'reports' ? "bg-slate-100 text-slate-900 shadow-sm shadow-slate-200/80" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600",
-              (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            <PieChart className="w-6 h-6 mb-1" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider">Laporan</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('settings')}
-            disabled={!isLoaded || !householdId}
-            className={cn(
-              "flex flex-1 flex-col items-center rounded-2xl p-3 transition-all duration-200",
-              activeTab === 'settings' ? "bg-slate-100 text-slate-900 shadow-sm shadow-slate-200/80" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600",
-              (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            <SettingsIcon className="w-6 h-6 mb-1" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider">Pengaturan</span>
-          </button>
-
-          {/* Floating Action Button */}
-          <button
-            onClick={() => {
-              setEditingTransaction(null);
-              setIsFormOpen(true);
-            }}
-            disabled={!isLoaded || !householdId}
-            className={cn(
-              "absolute left-1/2 -top-6 -translate-x-1/2 bg-slate-900 text-white p-4 rounded-full shadow-xl shadow-slate-900/20 hover:scale-105 active:scale-95 transition-all",
-              (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            <Plus className="w-8 h-8" />
-          </button>
-        </div>
-      </nav>
-
-      {/* Transaction Form Modal */}
-      {isFormOpen && (
-        <TransactionForm 
-          householdId={householdId} 
+      {isFormOpen && householdId && (
+        <TransactionForm
+          householdId={householdId}
           onClose={() => {
             setIsFormOpen(false);
             setEditingTransaction(null);
-          }} 
+          }}
           initialData={editingTransaction}
         />
       )}
 
-      {/* Logout Confirmation Modal */}
       <AnimatePresence>
         {showLogoutConfirm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl"
-            >
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Keluar Akun?</h3>
-              <p className="text-slate-500 text-sm mb-6">
-                Anda akan keluar dari aplikasi. Data Anda tetap aman di cloud.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowLogoutConfirm(false)}
-                  className="flex-1 py-3 px-4 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="flex-1 py-3 px-4 bg-rose-600 text-white font-medium rounded-xl hover:bg-rose-700 transition-colors"
-                >
-                  Ya, Keluar
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
+          <ModalCard onClose={() => setShowLogoutConfirm(false)} title="Keluar dari akun?" description="Tenang, semua data tetap aman tersimpan di cloud dan bisa dibuka lagi kapan saja.">
+            <div className="flex gap-3">
+              <button onClick={() => setShowLogoutConfirm(false)} className="flex-1 rounded-[1.2rem] bg-slate-100 px-4 py-3 font-semibold text-slate-700 transition hover:bg-slate-200">Batal</button>
+              <button onClick={handleLogout} className="flex-1 rounded-[1.2rem] bg-rose-500 px-4 py-3 font-semibold text-white transition hover:bg-rose-600">Ya, keluar</button>
+            </div>
+          </ModalCard>
         )}
 
-        {/* Alert Modal */}
         {alertMessage && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl"
-            >
-              <h3 className="text-lg font-bold text-slate-900 mb-2">{alertMessage.title}</h3>
-              <p className="text-slate-500 text-sm mb-6 whitespace-pre-wrap">
-                {alertMessage.message}
-              </p>
-              <button
-                onClick={() => setAlertMessage(null)}
-                className="w-full py-3 px-4 bg-slate-900 text-white font-medium rounded-xl hover:bg-slate-800 transition-colors"
-              >
-                Tutup
-              </button>
-            </motion.div>
-          </motion.div>
+          <ModalCard onClose={() => setAlertMessage(null)} title={alertMessage.title} description={alertMessage.message}>
+            <button onClick={() => setAlertMessage(null)} className="moni-primary-button w-full justify-center">Mengerti</button>
+          </ModalCard>
         )}
 
-        {/* Install Guide Prompt */}
         {showInstallGuide && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 backdrop-blur-sm p-4 pb-12"
+            className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/35 p-4 pb-10 backdrop-blur-sm"
             onClick={() => setShowInstallGuide(false)}
           >
             <motion.div
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
+              transition={{ type: 'spring', damping: 24, stiffness: 210 }}
+              className="w-full max-w-sm rounded-[2rem] border border-white/80 bg-white/95 p-6 shadow-[0_24px_60px_rgba(84,64,150,0.24)]"
+              onClick={(event) => event.stopPropagation()}
             >
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-bold text-slate-900">Instal Aplikasi</h3>
-                <button onClick={() => setShowInstallGuide(false)} className="p-1 text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full">
-                  <X className="w-5 h-5" />
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-semibold tracking-tight">Pasang aplikasi Moni</h3>
+                  <p className="mt-1 text-sm text-[color:var(--moni-subtle)]">Buka lebih cepat dan nikmati mode layar penuh seperti aplikasi native.</p>
+                </div>
+                <button onClick={() => setShowInstallGuide(false)} className="rounded-full bg-slate-100 p-2 text-slate-500 transition hover:bg-slate-200">
+                  <X className="h-4 w-4" />
                 </button>
               </div>
-              <p className="text-slate-600 text-sm mb-6">
-                Instal aplikasi ini di perangkat Anda untuk akses lebih cepat dan pengalaman layar penuh.
-              </p>
-              
+
               {isIosDevice ? (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-4">
-                    <div className="bg-slate-100 p-3 rounded-xl text-slate-700">
-                      <Share className="w-6 h-6" />
-                    </div>
-                    <p className="text-sm text-slate-700">
-                      1. Ketuk ikon <span className="font-bold">Bagikan (Share)</span> di menu bawah browser Anda.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="bg-slate-100 p-3 rounded-xl text-slate-700">
-                      <PlusSquare className="w-6 h-6" />
-                    </div>
-                    <p className="text-sm text-slate-700">
-                      2. Gulir ke bawah dan ketuk <span className="font-bold">"Tambah ke Layar Utama" (Add to Home Screen)</span>.
-                    </p>
-                  </div>
+                  <Step icon={<Share className="h-5 w-5" />} text="Ketuk tombol Bagikan di browser Safari Anda." />
+                  <Step icon={<PlusSquare className="h-5 w-5" />} text="Pilih Tambah ke Layar Utama agar Moni tampil seperti aplikasi." />
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-4">
-                    <div className="bg-slate-100 p-3 rounded-xl text-slate-700">
-                      <MoreVertical className="w-6 h-6" />
-                    </div>
-                    <p className="text-sm text-slate-700">
-                      1. Ketuk ikon <span className="font-bold">Menu (Tiga Titik)</span> di pojok kanan atas browser Anda.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="bg-slate-100 p-3 rounded-xl text-slate-700">
-                      <Download className="w-6 h-6" />
-                    </div>
-                    <p className="text-sm text-slate-700">
-                      2. Pilih <span className="font-bold">"Instal Aplikasi" (Install App)</span> atau <span className="font-bold">"Tambahkan ke Layar Utama"</span>.
-                    </p>
-                  </div>
+                  <Step icon={<MoreVertical className="h-5 w-5" />} text="Buka menu browser di pojok kanan atas." />
+                  <Step icon={<Download className="h-5 w-5" />} text="Pilih Instal Aplikasi atau Tambahkan ke Layar Utama." />
                 </div>
               )}
 
-              <button
-                onClick={() => setShowInstallGuide(false)}
-                className="w-full mt-8 py-3 px-4 bg-slate-900 text-white font-medium rounded-xl hover:bg-slate-800 transition-colors"
-              >
-                Mengerti
-              </button>
+              <button onClick={() => setShowInstallGuide(false)} className="moni-primary-button mt-8 w-full justify-center">Siap</button>
             </motion.div>
           </motion.div>
         )}
 
-        {/* Custom Mini Infobar mimicking native Chrome */}
         {showMiniInfoBar && !isStandalone && (deferredPrompt || isIosDevice) && (
-          <motion.div
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-0 left-0 right-0 z-50 sm:pb-4 sm:px-4"
-          >
-            <div 
-              className="bg-white border-t sm:border border-slate-200 sm:rounded-xl shadow-[0_-4px_20px_rgba(0,0,0,0.1)] sm:shadow-2xl p-3 flex items-center justify-between cursor-pointer max-w-md mx-auto"
+          <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }} className="fixed inset-x-0 bottom-20 z-50 px-4 sm:px-6">
+            <div
+              className="mx-auto flex max-w-md cursor-pointer items-center justify-between rounded-[1.5rem] border border-white/80 bg-white/95 p-3 shadow-[0_20px_45px_rgba(84,64,150,0.18)]"
               onClick={async () => {
                 if (deferredPrompt) {
                   deferredPrompt.prompt();
@@ -473,22 +365,58 @@ export default function App() {
               }}
             >
               <div className="flex items-center gap-3">
-                <img src="/android-chrome-192x192.png" alt="Finance" className="w-10 h-10 rounded-full shadow-sm" />
-                <span className="text-slate-800 font-medium text-[15px]">Add Finance to Home Screen</span>
+                <div className="flex h-11 w-11 items-center justify-center rounded-[1rem] moni-hero text-white shadow-[0_10px_25px_rgba(151,103,218,0.28)]">
+                  <WalletCards className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Tambahkan Moni ke Home Screen</p>
+                  <p className="text-xs text-[color:var(--moni-subtle)]">Buka lebih cepat tanpa cari-cari tab browser.</p>
+                </div>
               </div>
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
+              <button
+                onClick={(event) => {
+                  event.stopPropagation();
                   setShowMiniInfoBar(false);
                 }}
-                className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100"
+                className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
               >
-                <X className="w-5 h-5" />
+                <X className="h-4 w-4" />
               </button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+function Step({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-[1.35rem] bg-[#f7f4ff] p-3">
+      <div className="flex h-11 w-11 items-center justify-center rounded-[1rem] bg-white text-violet-500 shadow-[0_10px_25px_rgba(125,104,196,0.12)]">{icon}</div>
+      <p className="text-sm leading-6 text-[color:var(--moni-text)]">{text}</p>
+    </div>
+  );
+}
+
+function ModalCard({
+  title,
+  description,
+  children,
+  onClose,
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+  onClose: () => void;
+}) {
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/35 p-4 backdrop-blur-sm" onClick={onClose}>
+      <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.96, opacity: 0 }} className="w-full max-w-sm rounded-[2rem] border border-white/80 bg-white/95 p-6 shadow-[0_24px_60px_rgba(84,64,150,0.24)]" onClick={(event) => event.stopPropagation()}>
+        <h3 className="text-lg font-semibold tracking-tight">{title}</h3>
+        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[color:var(--moni-subtle)]">{description}</p>
+        <div className="mt-6">{children}</div>
+      </motion.div>
+    </motion.div>
   );
 }
