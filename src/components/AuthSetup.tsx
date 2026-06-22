@@ -15,6 +15,8 @@ import { motion } from 'motion/react';
 import {
   ArrowLeft,
   ChevronRight,
+  Eye,
+  EyeOff,
   KeyRound,
   LoaderCircle,
   LogIn,
@@ -89,6 +91,8 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
   const [payday, setPayday] = useState('25');
   const [displayName, setDisplayName] = useState('');
   const [emailForm, setEmailForm] = useState<EmailFormState>(initialEmailForm);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loadingAction, setLoadingAction] = useState<LoadingAction>(null);
   const [error, setError] = useState('');
 
@@ -191,6 +195,8 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
   const resetToWelcome = () => {
     setError('');
     setEmailForm(initialEmailForm);
+    setShowPassword(false);
+    setShowConfirmPassword(false);
     setAuthScreen('welcome');
   };
 
@@ -263,6 +269,8 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
       setDisplayName(trimmedDisplayName);
       await syncUserProfile(result.user, trimmedDisplayName);
       setEmailForm(initialEmailForm);
+      setShowPassword(false);
+      setShowConfirmPassword(false);
       setAuthScreen('post-login-choice');
     } catch (err: any) {
       setError(mapFirebaseAuthError(err));
@@ -284,6 +292,8 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
       setDisplayName(resolvedName);
       await syncUserProfile(result.user, resolvedName);
       setEmailForm(initialEmailForm);
+      setShowPassword(false);
+      setShowConfirmPassword(false);
       setAuthScreen('post-login-choice');
     } catch (err: any) {
       setError(mapFirebaseAuthError(err));
@@ -501,13 +511,21 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
               <div className="relative">
                 <KeyRound className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   value={emailForm.password}
                   onChange={(e) => updateEmailField('password', e.target.value)}
                   placeholder={isSignup ? 'Minimal 6 karakter' : 'Masukkan password Anda'}
-                  className="w-full rounded-2xl bg-slate-50 py-3 pl-12 pr-4 text-slate-900 outline-none ring-0 transition focus:ring-2 focus:ring-indigo-500"
+                  className="w-full rounded-2xl bg-slate-50 py-3 pl-12 pr-12 text-slate-900 outline-none ring-0 transition focus:ring-2 focus:ring-indigo-500"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((current) => !current)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600"
+                  aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
             </div>
 
@@ -517,13 +535,21 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
                 <div className="relative">
                   <KeyRound className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                   <input
-                    type="password"
+                    type={showConfirmPassword ? 'text' : 'password'}
                     required
                     value={emailForm.confirmPassword}
                     onChange={(e) => updateEmailField('confirmPassword', e.target.value)}
                     placeholder="Ulangi password Anda"
-                    className="w-full rounded-2xl bg-slate-50 py-3 pl-12 pr-4 text-slate-900 outline-none ring-0 transition focus:ring-2 focus:ring-indigo-500"
+                    className="w-full rounded-2xl bg-slate-50 py-3 pl-12 pr-12 text-slate-900 outline-none ring-0 transition focus:ring-2 focus:ring-indigo-500"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((current) => !current)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600"
+                    aria-label={showConfirmPassword ? 'Sembunyikan konfirmasi password' : 'Tampilkan konfirmasi password'}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
                 </div>
               </div>
             )}

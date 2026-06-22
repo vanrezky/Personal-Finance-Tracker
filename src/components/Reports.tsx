@@ -3,7 +3,6 @@ import { endOfDay, format, isWithinInterval, parseISO, startOfDay, subMonths } f
 import { db, collection, query, onSnapshot } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { ReportsSkeleton, ReportsView } from './ReportsView';
-import { MonthlyShoppingPlanner } from './MonthlyShoppingPlanner';
 import type { CategoryExpenseDatum, DailyTrendDatum, MonthlyExpenseItem, TransactionRecord } from './financeTypes';
 
 export function Reports({ householdId }: { householdId: string }) {
@@ -151,7 +150,6 @@ export function Reports({ householdId }: { householdId: string }) {
 
   return (
     <div className="space-y-8 pb-12">
-      <MonthlyShoppingPlanner householdId={householdId} />
       <ReportsView
         startDate={startDate}
         endDate={endDate}

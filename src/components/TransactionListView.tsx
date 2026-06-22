@@ -246,7 +246,7 @@ function ReceiptViewer({ viewingReceipt, onClose }: { viewingReceipt: string | n
   return (
     <AnimatePresence>
       {viewingReceipt && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-4 backdrop-blur-sm" onClick={onClose}>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/80 p-4 backdrop-blur-sm" onClick={onClose}>
           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative flex max-h-[90vh] w-full max-w-2xl flex-col items-center justify-center" onClick={(event) => event.stopPropagation()}>
             <button onClick={onClose} className="absolute -top-12 right-0 p-2 text-white/70 transition-colors hover:text-white">
               <X className="h-8 w-8" />

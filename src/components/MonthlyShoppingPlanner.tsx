@@ -122,21 +122,26 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
     setSaving(true);
     try {
       const path = `households/${householdId}/shoppingMonths/${selectedMonth}/items`;
-      const payload = {
+      const basePayload = {
         name,
         estimatedAmount,
-        quantity: quantity ?? deleteField(),
-        unit: unit || deleteField(),
-        notes: notes || deleteField(),
         updatedAt: new Date().toISOString(),
         authorUid: auth.currentUser.uid,
       };
 
       if (editingItemId) {
-        await updateDoc(doc(db, `${path}/${editingItemId}`), payload);
+        await updateDoc(doc(db, `${path}/${editingItemId}`), {
+          ...basePayload,
+          quantity: quantity ?? deleteField(),
+          unit: unit || deleteField(),
+          notes: notes || deleteField(),
+        });
       } else {
         await addDoc(collection(db, path), {
-          ...payload,
+          ...basePayload,
+          ...(quantity !== undefined ? { quantity } : {}),
+          ...(unit ? { unit } : {}),
+          ...(notes ? { notes } : {}),
           isChecked: false,
           createdAt: new Date().toISOString(),
         });

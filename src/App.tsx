@@ -5,8 +5,9 @@ import { TransactionForm } from './components/TransactionForm';
 import { AuthSetup } from './components/AuthSetup';
 import { Reports } from './components/Reports';
 import { Settings } from './components/Settings';
+import { MonthlyShoppingPlanner } from './components/MonthlyShoppingPlanner';
 import { auth, db, logout, onSnapshot, collection, query, orderBy, setDoc, doc, getDoc } from './firebase';
-import { Plus, Activity, ListOrdered, LogOut, Download, CloudOff, PieChart, Settings as SettingsIcon, Share, PlusSquare, X, MoreVertical, Sparkles } from 'lucide-react';
+import { Plus, Activity, ListOrdered, LogOut, Download, CloudOff, PieChart, Settings as SettingsIcon, Share, PlusSquare, X, MoreVertical, Sparkles, ShoppingBasket } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { handleFirestoreError, OperationType } from './lib/firestore-errors';
@@ -17,6 +18,7 @@ export default function App() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'history' | 'reports' | 'settings'>('dashboard');
+  const [historyView, setHistoryView] = useState<'transactions' | 'shopping'>('transactions');
   const [isLoaded, setIsLoaded] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -155,13 +157,48 @@ export default function App() {
         return <Dashboard householdId={householdId} />;
       case 'history':
         return (
-          <TransactionList 
-            householdId={householdId} 
-            onEdit={(transaction) => {
-              setEditingTransaction(transaction);
-              setIsFormOpen(true);
-            }} 
-          />
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 rounded-2xl bg-slate-100 p-1">
+              <button
+                type="button"
+                onClick={() => setHistoryView('transactions')}
+                className={cn(
+                  'flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all',
+                  historyView === 'transactions'
+                    ? 'bg-white text-slate-900 shadow-sm shadow-slate-200/80'
+                    : 'text-slate-500 hover:text-slate-700'
+                )}
+              >
+                <ListOrdered className="h-4 w-4" />
+                <span>Transaksi</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setHistoryView('shopping')}
+                className={cn(
+                  'flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all',
+                  historyView === 'shopping'
+                    ? 'bg-white text-slate-900 shadow-sm shadow-slate-200/80'
+                    : 'text-slate-500 hover:text-slate-700'
+                )}
+              >
+                <ShoppingBasket className="h-4 w-4" />
+                <span>Belanja Bulanan</span>
+              </button>
+            </div>
+
+            {historyView === 'transactions' ? (
+              <TransactionList
+                householdId={householdId}
+                onEdit={(transaction) => {
+                  setEditingTransaction(transaction);
+                  setIsFormOpen(true);
+                }}
+              />
+            ) : (
+              <MonthlyShoppingPlanner householdId={householdId} />
+            )}
+          </div>
         );
       case 'reports':
         return <Reports householdId={householdId} />;
