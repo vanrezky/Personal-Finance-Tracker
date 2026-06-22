@@ -61,16 +61,27 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   Pemberian: ['dikasih', 'pemberian', 'hadiah', 'angpao'],
 };
 
+function toDateTimeLocalValue(value: string | undefined) {
+  const source = value ? new Date(value) : new Date();
+  const timezoneOffset = source.getTimezoneOffset();
+  const localDate = new Date(source.getTime() - timezoneOffset * 60_000);
+  return localDate.toISOString().slice(0, 16);
+}
+
 export function TransactionForm({ householdId, onClose, initialData }: TransactionFormProps) {
   const [type, setType] = useState<TransactionType>(initialData?.type || 'expense');
   const [amountStr, setAmountStr] = useState(initialData?.amount ? new Intl.NumberFormat('id-ID').format(initialData.amount) : '');
   const [category, setCategory] = useState(initialData?.category || '');
   const [note, setNote] = useState(initialData?.note || '');
-  const [date, setDate] = useState(initialData?.date ? initialData.date.split('T')[0] : new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(() => toDateTimeLocalValue(initialData?.date));
   const [isListening, setIsListening] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [receiptImage, setReceiptImage] = useState<string | null>(initialData?.receiptImage || null);
+  const [receiptScanState, setReceiptScanState] = useState<'idle' | 'selected' | 'analyzing' | 'success' | 'error'>(() => initialData?.receiptImage ? 'success' : 'idle');
   const [customCategories, setCustomCategories] = useState<CategoryRecord[]>([]);
+  const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
+  const [searchCategory, setSearchCategory] = useState('');
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<CategoryRecord | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -99,12 +110,57 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
     return () => unsubscribe();
   }, [householdId]);
 
+  useEffect(() => {
+    const path = `households/${householdId}/transactions`;
+    const q = query(collection(db, path));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const items = snapshot.docs.map((snapshotDoc) => ({
+          id: snapshotDoc.id,
+          ...(snapshotDoc.data() as Omit<TransactionRecord, 'id'>),
+        }));
+        setTransactions(items);
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.LIST, path);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [householdId]);
+
   const defaultCategories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
   const currentCustomCategories = customCategories.filter((item) => item.type === type);
   const categoryObjects = [
     ...defaultCategories.map((name) => ({ id: name, name, isCustom: false })),
     ...currentCustomCategories.map((item) => ({ id: item.id, name: item.name, isCustom: true, record: item })),
   ];
+  const categoryUsage = transactions.reduce<Record<string, number>>((accumulator, transaction) => {
+    if (transaction.type !== type) return accumulator;
+    accumulator[transaction.category] = (accumulator[transaction.category] ?? 0) + 1;
+    return accumulator;
+  }, {});
+  const sortedCategoryObjects = [...categoryObjects].sort((left, right) => {
+    const countDiff = (categoryUsage[right.name] ?? 0) - (categoryUsage[left.name] ?? 0);
+    if (countDiff !== 0) return countDiff;
+    return left.name.localeCompare(right.name);
+  });
+  const featuredCategoryObjects = Array.from(
+    new Map(
+      [
+        ...(category ? sortedCategoryObjects.filter((item) => item.name === category) : []),
+        ...sortedCategoryObjects,
+        ...(category ? categoryObjects.filter((item) => item.name === category) : []),
+      ].map((item) => [item.id, item])
+    ).values()
+  ).slice(0, 8);
+
+  useEffect(() => {
+    setSearchCategory('');
+    setShowAllCategories(false);
+  }, [type]);
 
   const handleSaveCategory = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -140,6 +196,7 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
           authorUid: auth.currentUser?.uid,
         });
         setCategory(newCategoryName.trim());
+        setShowAllCategories(true);
       }
 
       setIsCategoryModalOpen(false);
@@ -363,6 +420,7 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
       const base64DataUrl = canvas.toDataURL('image/jpeg', 0.6);
       const base64Data = base64DataUrl.split(',')[1];
       setReceiptImage(base64DataUrl);
+      setReceiptScanState('analyzing');
       URL.revokeObjectURL(objectUrl);
 
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -396,10 +454,11 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
         }
         if (data.note) setNote(data.note);
       }
+      setReceiptScanState('success');
     } catch (error) {
       console.error('Error scanning receipt:', error);
       alert('Gagal memindai struk. Pastikan gambar jelas dan coba lagi.');
-      setReceiptImage(null);
+      setReceiptScanState('error');
     } finally {
       setIsScanning(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -463,10 +522,14 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
       note={note}
       date={date}
       receiptImage={receiptImage}
+      receiptScanState={receiptScanState}
       isListening={isListening}
       isScanning={isScanning}
       isSubmitting={isSubmitting}
       categoryObjects={categoryObjects}
+      featuredCategoryObjects={featuredCategoryObjects}
+      searchCategory={searchCategory}
+      showAllCategories={showAllCategories}
       isCategoryModalOpen={isCategoryModalOpen}
       editingCategory={editingCategory}
       newCategoryName={newCategoryName}
@@ -480,6 +543,8 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
       onQuickAmountAdd={addAmount}
       onAppendZeros={appendZeros}
       onCategoryChange={setCategory}
+      onSearchCategoryChange={setSearchCategory}
+      onToggleShowAllCategories={() => setShowAllCategories((value) => !value)}
       onOpenNewCategoryModal={() => {
         setEditingCategory(null);
         setNewCategoryName('');
@@ -493,7 +558,10 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
       onDeleteCategory={handleDeleteCategory}
       onNoteChange={setNote}
       onDateChange={setDate}
-      onClearReceiptImage={() => setReceiptImage(null)}
+      onClearReceiptImage={() => {
+        setReceiptImage(null);
+        setReceiptScanState('idle');
+      }}
       onStartListening={startListening}
       onTriggerScanReceipt={() => fileInputRef.current?.click()}
       onReceiptFileChange={handleScanReceipt}

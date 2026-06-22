@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { Camera, Check, Edit2, Loader2, Mic, Plus, Trash2, X } from 'lucide-react';
+import { AlertCircle, Camera, Check, ChevronDown, ChevronUp, Edit2, Loader2, Mic, Plus, Search, Trash2, Upload, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { CategoryRecord, TransactionType } from './financeTypes';
 
@@ -18,10 +18,14 @@ interface TransactionFormViewProps {
   note: string;
   date: string;
   receiptImage: string | null;
+  receiptScanState: 'idle' | 'selected' | 'analyzing' | 'success' | 'error';
   isListening: boolean;
   isScanning: boolean;
   isSubmitting: boolean;
   categoryObjects: CategoryOption[];
+  featuredCategoryObjects: CategoryOption[];
+  searchCategory: string;
+  showAllCategories: boolean;
   isCategoryModalOpen: boolean;
   editingCategory: CategoryRecord | null;
   newCategoryName: string;
@@ -32,6 +36,8 @@ interface TransactionFormViewProps {
   onQuickAmountAdd: (value: number) => void;
   onAppendZeros: () => void;
   onCategoryChange: (category: string) => void;
+  onSearchCategoryChange: (value: string) => void;
+  onToggleShowAllCategories: () => void;
   onOpenNewCategoryModal: () => void;
   onEditCategory: (category: CategoryRecord) => void;
   onDeleteCategory: (category: CategoryRecord) => void;
@@ -100,10 +106,37 @@ function VoiceScanActions({
   );
 }
 
-function ReceiptPreview({ receiptImage, onClearReceiptImage }: Pick<TransactionFormViewProps, 'receiptImage' | 'onClearReceiptImage'>) {
+function ReceiptPreview({
+  receiptImage,
+  receiptScanState,
+  onClearReceiptImage,
+}: Pick<TransactionFormViewProps, 'receiptImage' | 'receiptScanState' | 'onClearReceiptImage'>) {
   if (!receiptImage) {
     return null;
   }
+
+  const statusConfig = {
+    selected: {
+      icon: <Upload className="h-3 w-3 text-sky-300" />,
+      message: 'Gambar struk sudah dipilih',
+    },
+    analyzing: {
+      icon: <Loader2 className="h-3 w-3 animate-spin text-amber-300" />,
+      message: 'Sedang menganalisa struk...',
+    },
+    success: {
+      icon: <Check className="h-3 w-3 text-emerald-400" />,
+      message: 'Analisa struk selesai',
+    },
+    error: {
+      icon: <AlertCircle className="h-3 w-3 text-rose-300" />,
+      message: 'Analisa gagal, gambar masih bisa dipakai',
+    },
+    idle: {
+      icon: <Upload className="h-3 w-3 text-sky-300" />,
+      message: 'Gambar struk sudah dipilih',
+    },
+  }[receiptScanState];
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
@@ -117,7 +150,7 @@ function ReceiptPreview({ receiptImage, onClearReceiptImage }: Pick<TransactionF
       </button>
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/50 to-transparent p-3">
         <p className="flex items-center gap-1 text-xs font-medium text-white">
-          <Check className="h-3 w-3 text-emerald-400" /> Struk berhasil dipindai
+          {statusConfig.icon} {statusConfig.message}
         </p>
       </div>
     </div>
@@ -169,9 +202,9 @@ function BasicInputSection({
       </div>
 
       <div className="space-y-1.5">
-        <label className="px-1 text-sm font-medium text-slate-600">Tanggal</label>
+        <label className="px-1 text-sm font-medium text-slate-600">Tanggal & jam</label>
         <input
-          type="date"
+          type="datetime-local"
           required
           value={date}
           onChange={(event) => onDateChange(event.target.value)}
@@ -186,16 +219,60 @@ function CategoryPicker({
   type,
   category,
   categoryObjects,
+  featuredCategoryObjects,
+  searchCategory,
+  showAllCategories,
   onCategoryChange,
+  onSearchCategoryChange,
+  onToggleShowAllCategories,
   onOpenNewCategoryModal,
   onEditCategory,
   onDeleteCategory,
-}: Pick<TransactionFormViewProps, 'type' | 'category' | 'categoryObjects' | 'onCategoryChange' | 'onOpenNewCategoryModal' | 'onEditCategory' | 'onDeleteCategory'>) {
+}: Pick<TransactionFormViewProps, 'type' | 'category' | 'categoryObjects' | 'featuredCategoryObjects' | 'searchCategory' | 'showAllCategories' | 'onCategoryChange' | 'onSearchCategoryChange' | 'onToggleShowAllCategories' | 'onOpenNewCategoryModal' | 'onEditCategory' | 'onDeleteCategory'>) {
+  const shouldShowSearch = showAllCategories || searchCategory.trim().length > 0 || categoryObjects.length > 12;
+  const normalizedSearch = searchCategory.trim().toLowerCase();
+  const visibleCategoryObjects = normalizedSearch
+    ? categoryObjects.filter((item) => item.name.toLowerCase().includes(normalizedSearch))
+    : showAllCategories
+      ? categoryObjects
+      : featuredCategoryObjects;
+  const isShowingFeaturedOnly = !showAllCategories && !normalizedSearch;
+
   return (
     <div className="space-y-2">
-      <label className="px-1 text-sm font-medium text-slate-600">Kategori</label>
+      <div className="flex items-center justify-between gap-3">
+        <label className="px-1 text-sm font-medium text-slate-600">Kategori</label>
+        {categoryObjects.length > featuredCategoryObjects.length && (
+          <button
+            type="button"
+            onClick={onToggleShowAllCategories}
+            className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-200"
+          >
+            {showAllCategories ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            {showAllCategories ? 'Sembunyikan' : `Lihat semua (${categoryObjects.length})`}
+          </button>
+        )}
+      </div>
+
+      {shouldShowSearch && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={searchCategory}
+            onChange={(event) => onSearchCategoryChange(event.target.value)}
+            placeholder="Cari kategori..."
+            className="w-full rounded-2xl border-none bg-slate-50 py-3 pl-10 pr-4 text-sm text-slate-900 transition-shadow focus:ring-2 focus:ring-slate-900"
+          />
+        </div>
+      )}
+
+      {isShowingFeaturedOnly && featuredCategoryObjects.length > 0 && (
+        <p className="px-1 text-[11px] text-slate-500">Kategori yang paling sering dipakai ditampilkan dulu biar input lebih cepat.</p>
+      )}
+
       <div className="grid grid-cols-3 gap-2">
-        {categoryObjects.map((categoryItem) => (
+        {visibleCategoryObjects.map((categoryItem) => (
           <div key={categoryItem.id} className="group relative">
             <label
               className={cn(
@@ -230,6 +307,11 @@ function CategoryPicker({
             )}
           </div>
         ))}
+        {visibleCategoryObjects.length === 0 && (
+          <div className="col-span-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+            Kategori tidak ditemukan.
+          </div>
+        )}
         <button type="button" onClick={onOpenNewCategoryModal} className="flex h-full min-h-[3rem] select-none items-center justify-center gap-1 rounded-xl border border-dashed border-slate-300 px-1 py-3 text-center text-xs font-medium text-slate-500 transition-all hover:bg-slate-50 hover:text-slate-700">
           <Plus className="h-3.5 w-3.5" /> Tambah
         </button>
@@ -316,7 +398,7 @@ export function TransactionFormView(props: TransactionFormViewProps) {
               </button>
             </div>
 
-            <ReceiptPreview receiptImage={props.receiptImage} onClearReceiptImage={props.onClearReceiptImage} />
+            <ReceiptPreview receiptImage={props.receiptImage} receiptScanState={props.receiptScanState} onClearReceiptImage={props.onClearReceiptImage} />
 
             <BasicInputSection
               amountStr={props.amountStr}
@@ -333,7 +415,12 @@ export function TransactionFormView(props: TransactionFormViewProps) {
               type={props.type}
               category={props.category}
               categoryObjects={props.categoryObjects}
+              featuredCategoryObjects={props.featuredCategoryObjects}
+              searchCategory={props.searchCategory}
+              showAllCategories={props.showAllCategories}
               onCategoryChange={props.onCategoryChange}
+              onSearchCategoryChange={props.onSearchCategoryChange}
+              onToggleShowAllCategories={props.onToggleShowAllCategories}
               onOpenNewCategoryModal={props.onOpenNewCategoryModal}
               onEditCategory={props.onEditCategory}
               onDeleteCategory={props.onDeleteCategory}
