@@ -75,7 +75,7 @@ function ReportsPeriodFilter({
     <div className="space-y-4 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
       <div className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
         <Calendar className="h-5 w-5 text-indigo-600" />
-        <h3>Filter Periode</h3>
+        <h3>Pilih periode</h3>
       </div>
       <div className="flex flex-nowrap items-end justify-between gap-2">
         <div className="min-w-0 flex-1 basis-[48%] space-y-1">
@@ -144,15 +144,15 @@ function MonthlyExpenseSection({
           </div>
           <p className="text-sm text-slate-500">
             {monthlyExpenseData.length <= 1
-              ? 'Periode aktif hanya mencakup satu bulan, jadi seluruh pengeluaran diringkas dalam satu entry.'
-              : 'Pantau kontribusi setiap bulan terhadap total pengeluaran pada periode filter aktif.'}
+              ? 'Periode ini hanya mencakup satu bulan, jadi semua pengeluaran dirangkum dalam satu bagian.'
+              : 'Lihat seberapa besar sumbangan tiap bulan terhadap total pengeluaran pada periode yang kamu pilih.'}
           </p>
         </div>
 
         <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 sm:max-w-xs">
           <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-rose-500">Total periode</p>
           <p className="mt-1 text-lg font-bold text-rose-950">{formatCurrency(totalExpense)}</p>
-          <p className="mt-1 text-xs text-rose-700">Dihitung dari transaksi expense dalam rentang tanggal saat ini.</p>
+          <p className="mt-1 text-xs text-rose-700">Dihitung dari semua transaksi pengeluaran pada rentang tanggal ini.</p>
         </div>
       </div>
 
@@ -167,7 +167,7 @@ function MonthlyExpenseSection({
             <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">Rata-rata per bulan</p>
               <p className="mt-2 text-base font-bold text-slate-950">{formatCurrency(averageMonthlyExpense)}</p>
-              <p className="mt-1 text-xs text-slate-500">{monthlyExpenseData.length} bulan dengan pengeluaran pada periode ini.</p>
+              <p className="mt-1 text-xs text-slate-500">Ada {monthlyExpenseData.length} bulan dengan catatan pengeluaran di periode ini.</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">Selisih bulan terakhir</p>
@@ -208,11 +208,11 @@ function MonthlyExpenseSection({
                   <div className="mt-3 flex flex-col gap-1 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
                     <span>
                       {monthlyExpenseData.length === 1
-                        ? 'Semua pengeluaran pada filter aktif terjadi di bulan ini.'
+                        ? 'Semua pengeluaran pada periode ini terjadi di bulan yang sama.'
                         : delta === null
-                          ? 'Ini adalah bulan pertama pada rentang filter aktif.'
+                          ? 'Ini bulan pertama dalam rentang yang sedang kamu lihat.'
                           : delta === 0
-                            ? 'Nominalnya sama dengan bulan sebelumnya.'
+                            ? 'Nominalnya sama seperti bulan sebelumnya.'
                             : `${delta > 0 ? 'Naik' : 'Turun'} ${formatCurrency(Math.abs(delta))} dibanding ${previousItem?.monthLabel}.`}
                     </span>
                     <span className="font-medium text-slate-600">{item.percentageOfPeriodExpense.toFixed(1)}%</span>
@@ -224,9 +224,9 @@ function MonthlyExpenseSection({
         </>
       ) : (
         <ReportsEmptyState
-          eyebrow="Belum ada pengeluaran bulanan"
-          title="Tidak ada transaksi expense pada periode filter aktif."
-          description="Coba perluas rentang tanggal atau tambahkan transaksi pengeluaran baru untuk melihat ringkasan bulanan di sini."
+          eyebrow="Belum ada ringkasan bulanan"
+          title="Belum ada transaksi pengeluaran di periode ini."
+          description="Coba perluas rentang tanggal atau tambahkan pengeluaran baru supaya ringkasan bulanannya muncul di sini."
         />
       )}
     </div>
@@ -275,7 +275,7 @@ export function ReportsView(props: ReportsViewProps) {
         totalExpense={totalExpense}
       />
 
-      <ReportsChartSection title="Pengeluaran per Kategori" icon={<PieChartIcon className="h-5 w-5 text-indigo-600" />}>
+      <ReportsChartSection title="Pengeluaran per kategori" icon={<PieChartIcon className="h-5 w-5 text-indigo-600" />}>
         {categoryData.length > 0 ? (
           <div className="w-full">
             <div className="h-[240px] min-h-0 w-full min-w-0">
@@ -301,11 +301,11 @@ export function ReportsView(props: ReportsViewProps) {
             </div>
           </div>
         ) : (
-          <ReportsEmptyState eyebrow="Data kosong" title="Tidak ada data pengeluaran" description="Tambahkan transaksi expense pada rentang tanggal aktif untuk melihat distribusi kategori." />
+          <ReportsEmptyState eyebrow="Belum ada data" title="Belum ada data pengeluaran" description="Tambahkan transaksi pengeluaran pada rentang tanggal ini untuk melihat pembagian per kategori." />
         )}
       </ReportsChartSection>
 
-      <ReportsChartSection title="Tren Harian" icon={<BarChart3 className="h-5 w-5 text-indigo-600" />}>
+      <ReportsChartSection title="Tren harian" icon={<BarChart3 className="h-5 w-5 text-indigo-600" />}>
         {dailyData.length > 0 ? (
           <div className="h-[300px] min-h-0 w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
@@ -320,7 +320,7 @@ export function ReportsView(props: ReportsViewProps) {
             </ResponsiveContainer>
           </div>
         ) : (
-          <ReportsEmptyState eyebrow="Belum ada tren" title="Rentang tanggal ini belum punya transaksi" description="Perluas filter atau tambahkan transaksi untuk melihat pergerakan harian pemasukan dan pengeluaran." />
+          <ReportsEmptyState eyebrow="Belum ada tren" title="Belum ada transaksi di rentang tanggal ini" description="Perluas periode atau tambahkan transaksi supaya pergerakan harian bisa terlihat." />
         )}
       </ReportsChartSection>
     </div>

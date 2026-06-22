@@ -184,7 +184,7 @@ export default function App() {
             </div>
             <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
               <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
-              <span>{activeTab === 'dashboard' ? 'Ringkasan cashflow hari ini' : 'Kelola keuangan rumah tangga tanpa ribet'}</span>
+              <span>{activeTab === 'dashboard' ? 'Lihat kondisi uangmu hari ini' : 'Atur keuangan rumah tangga dengan lebih rapi'}</span>
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">

@@ -1,23 +1,26 @@
 import {
   ArrowDownRight,
+  ArrowRight,
   ArrowUpRight,
+  Clock3,
+  Flame,
   Wallet,
   CalendarDays,
-  Sparkles,
   TrendingUp,
   ReceiptText,
+  Target,
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { formatCurrency } from '../lib/utils';
 import { Skeleton } from './Skeleton';
+import type { TransactionRecord } from './financeTypes';
 
 interface DashboardViewProps {
   balance: number;
   income: number;
   cycleIncome: number;
   cycleExpense: number;
-  cycleBalance: number;
   cycleStart: Date;
   cycleEnd: Date;
   elapsedDays: number;
@@ -29,6 +32,14 @@ interface DashboardViewProps {
   recentTransactionCount: number;
   totalTransactionCount: number;
   highlightMessage: string;
+  remainingDays: number;
+  averageDailyExpense: number;
+  projectedCycleExpense: number;
+  remainingSafeDays: number | null;
+  spendingProgress: number;
+  paceLabel: string;
+  topExpenseCategories: Array<{ name: string; amount: number }>;
+  latestTransactions: TransactionRecord[];
 }
 
 export function DashboardSkeleton() {
@@ -91,7 +102,6 @@ export function DashboardView({
   income,
   cycleIncome,
   cycleExpense,
-  cycleBalance,
   cycleStart,
   cycleEnd,
   elapsedDays,
@@ -103,7 +113,17 @@ export function DashboardView({
   recentTransactionCount,
   totalTransactionCount,
   highlightMessage,
+  remainingDays,
+  averageDailyExpense,
+  projectedCycleExpense,
+  remainingSafeDays,
+  spendingProgress,
+  paceLabel,
+  topExpenseCategories,
+  latestTransactions,
 }: DashboardViewProps) {
+  const spendingPaceTone = spendingProgress <= cycleProgress ? 'text-emerald-700' : 'text-rose-700';
+
   return (
     <div className="space-y-5 sm:space-y-6">
       <motion.div
@@ -126,7 +146,7 @@ export function DashboardView({
             </div>
 
             <div className="hidden rounded-2xl border border-white/10 bg-white/10 px-3 py-2 text-right backdrop-blur-sm sm:block">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-300">Progress</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-300">Progres</p>
               <p className="text-sm font-semibold text-white">Hari {elapsedDays} / {cycleLength}</p>
             </div>
           </div>
@@ -160,24 +180,35 @@ export function DashboardView({
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+        className="grid grid-cols-1 gap-3 sm:grid-cols-3"
       >
         <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm shadow-slate-200/60 backdrop-blur-sm">
           <div className="mb-2 flex items-center gap-2 text-slate-500">
             <CalendarDays className="h-4 w-4 text-indigo-500" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.2em]">Siklus aktif</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.2em]">Siklus</span>
           </div>
           <p className="text-sm font-semibold leading-5 text-slate-900">{format(cycleStart, 'dd MMM')} - {format(cycleEnd, 'dd MMM')}</p>
-          <p className="mt-1 text-xs text-slate-500">Periode gajian bulan ini.</p>
+          <p className="mt-1 text-xs text-slate-500">Masih ada {remainingDays} hari sebelum hari gajian tanggal {payday}.</p>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm shadow-slate-200/60 backdrop-blur-sm">
           <div className="mb-2 flex items-center gap-2 text-slate-500">
-            <Sparkles className="h-4 w-4 text-amber-500" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.2em]">Payday</span>
+            <Flame className="h-4 w-4 text-rose-500" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.2em]">Laju Belanja</span>
           </div>
-          <p className="text-sm font-semibold leading-5 text-slate-900">Tanggal {payday} tiap bulan</p>
-          <p className="mt-1 text-xs text-slate-500">Biar cashflow lebih gampang dipantau.</p>
+          <p className="text-sm font-semibold leading-5 text-slate-900">{formatCurrency(averageDailyExpense)}/hari</p>
+          <p className="mt-1 text-xs text-slate-500">Kalau polanya tetap sama, total belanja siklus ini sekitar {formatCurrency(projectedCycleExpense)}.</p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm shadow-slate-200/60 backdrop-blur-sm">
+          <div className="mb-2 flex items-center gap-2 text-slate-500">
+            <Wallet className="h-4 w-4 text-emerald-500" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.2em]">Daya Tahan</span>
+          </div>
+          <p className="text-sm font-semibold leading-5 text-slate-900">
+            {remainingSafeDays === null ? 'Belum terbaca' : `${remainingSafeDays} hari`}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">Perkiraan saldo bisa bertahan kalau pola belanjanya tetap sama.</p>
         </div>
       </motion.div>
 
@@ -192,7 +223,7 @@ export function DashboardView({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3 sm:gap-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -228,6 +259,24 @@ export function DashboardView({
               {cycleIncome > 0 ? `${expenseRate}% dari total pemasukan` : 'Belum ada pengeluaran tercatat'}
             </p>
           </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="rounded-[24px] border border-indigo-100/80 bg-gradient-to-br from-indigo-50 to-white p-4 shadow-sm shadow-indigo-100/70 sm:rounded-[28px] sm:p-5"
+          >
+            <div className="mb-3 flex items-center gap-2 text-indigo-700">
+              <div className="rounded-full bg-indigo-100 p-2">
+                <Target className="h-4 w-4" />
+              </div>
+              <span className="text-[11px] font-bold uppercase tracking-[0.1em] sm:text-xs sm:tracking-[0.18em]">Laju Pengeluaran</span>
+            </div>
+            <p className="text-lg font-bold text-indigo-950">{Math.round(spendingProgress)}%</p>
+            <p className={`mt-2 text-xs font-medium leading-5 ${spendingPaceTone}`}>
+              {paceLabel}
+            </p>
+          </motion.div>
         </div>
       </div>
 
@@ -239,8 +288,8 @@ export function DashboardView({
       >
         <div className="mb-4 flex items-start justify-between gap-3 sm:gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.12em] text-indigo-500 sm:tracking-[0.2em]">Quick insight</p>
-            <h3 className="mt-1 text-base font-semibold text-slate-900">Sorotan keuangan kamu</h3>
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-indigo-500 sm:tracking-[0.2em]">Insight utama</p>
+            <h3 className="mt-1 text-base font-semibold text-slate-900">Hal yang paling perlu kamu lihat</h3>
           </div>
           <div className="shrink-0 rounded-2xl bg-indigo-50 p-2 text-indigo-600">
             <TrendingUp className="h-5 w-5" />
@@ -253,11 +302,29 @@ export function DashboardView({
               <TrendingUp className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-900">Net flow siklus ini</p>
-              <p className="text-sm text-slate-600">
-                {cycleBalance >= 0 ? 'Masih surplus' : 'Sedang defisit'} sebesar{' '}
-                <span className="font-semibold text-slate-900">{formatCurrency(Math.abs(cycleBalance))}</span>.
-              </p>
+              <p className="text-sm font-semibold text-slate-900">Kondisi saldo sampai gajian</p>
+              <p className="text-sm text-slate-600">{highlightMessage}</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 rounded-2xl bg-slate-50 p-3">
+            <div className="rounded-xl bg-amber-100 p-2 text-amber-700">
+              <Flame className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Pos pengeluaran terbesar</p>
+              {topExpenseCategories.length > 0 ? (
+                <div className="space-y-1 text-sm text-slate-600">
+                  {topExpenseCategories.map((category, index) => (
+                    <div key={category.name} className="flex items-center justify-between gap-3">
+                      <span className="truncate">{index + 1}. {category.name}</span>
+                      <span className="shrink-0 font-semibold text-slate-900">{formatCurrency(category.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-600">Belum ada kategori pengeluaran pada siklus ini.</p>
+              )}
             </div>
           </div>
 
@@ -266,13 +333,57 @@ export function DashboardView({
               <ReceiptText className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-900">Aktivitas transaksi</p>
+              <p className="text-sm font-semibold text-slate-900">Aktivitas selama siklus ini</p>
               <p className="text-sm text-slate-600">
                 Ada <span className="font-semibold text-slate-900">{recentTransactionCount} transaksi</span> pada siklus ini dari total{' '}
                 <span className="font-semibold text-slate-900">{totalTransactionCount}</span> transaksi yang tercatat.
               </p>
             </div>
           </div>
+        </div>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/70 sm:rounded-[28px] sm:p-5"
+      >
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500 sm:tracking-[0.2em]">Aktivitas terbaru</p>
+            <h3 className="mt-1 text-base font-semibold text-slate-900">Transaksi terbaru</h3>
+          </div>
+          <div className="rounded-2xl bg-slate-100 p-2 text-slate-600">
+            <Clock3 className="h-5 w-5" />
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {latestTransactions.length > 0 ? latestTransactions.map((transaction) => (
+            <div key={transaction.id} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-slate-900">{transaction.category}</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {format(parseISO(transaction.date), 'dd MMM yyyy')}
+                  {transaction.authorName ? ` • ${transaction.authorName}` : ''}
+                </p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className={`text-sm font-bold ${transaction.type === 'income' ? 'text-emerald-600' : 'text-slate-900'}`}>
+                  {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                </p>
+                <p className="mt-1 flex items-center justify-end gap-1 text-[11px] text-slate-400">
+                  <ArrowRight className="h-3 w-3" />
+                  {transaction.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}
+                </p>
+              </div>
+            </div>
+          )) : (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+              Belum ada transaksi terbaru yang bisa ditampilkan.
+            </div>
+          )}
         </div>
       </motion.div>
 

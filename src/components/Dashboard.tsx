@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   addMonths,
+  compareDesc,
   differenceInCalendarDays,
   endOfDay,
   isWithinInterval,
@@ -64,6 +65,12 @@ export function Dashboard({ householdId }: { householdId: string }) {
       return isWithinInterval(transactionDate, { start: cycleStart, end: cycleEnd });
     });
 
+    const sortedTransactions = [...items].sort((left, right) => {
+      const leftDate = left.createdAt ? parseISO(left.createdAt) : parseISO(left.date);
+      const rightDate = right.createdAt ? parseISO(right.createdAt) : parseISO(right.date);
+      return compareDesc(leftDate, rightDate);
+    });
+
     const totals = items.reduce(
       (acc, current) => {
         if (current.type === 'income') {
@@ -94,12 +101,43 @@ export function Dashboard({ householdId }: { householdId: string }) {
     const savingsRate = cycleTotals.cycleIncome > 0 ? Math.round((cycleBalance / cycleTotals.cycleIncome) * 100) : 0;
     const expenseRate = cycleTotals.cycleIncome > 0 ? Math.round((cycleTotals.cycleExpense / cycleTotals.cycleIncome) * 100) : 0;
     const recentTransactionCount = cycleTransactions.length;
+    const remainingDays = Math.max(differenceInCalendarDays(cycleEnd, now), 0);
+    const averageDailyExpense = elapsedDays > 0 ? cycleTotals.cycleExpense / elapsedDays : 0;
+    const projectedCycleExpense = averageDailyExpense * cycleLength;
+    const remainingSafeDays = averageDailyExpense > 0 ? Math.floor(Math.max(totals.balance, 0) / averageDailyExpense) : null;
+    const spendingProgress = cycleTotals.cycleIncome > 0
+      ? Math.min((cycleTotals.cycleExpense / cycleTotals.cycleIncome) * 100, 999)
+      : 0;
+    const paceDelta = Math.round(spendingProgress - cycleProgress);
+
+    const topExpenseCategories = Object.entries(
+      cycleTransactions.reduce<Record<string, number>>((accumulator, current) => {
+        if (current.type !== 'expense') return accumulator;
+        const key = current.category || 'Tanpa kategori';
+        accumulator[key] = (accumulator[key] ?? 0) + current.amount;
+        return accumulator;
+      }, {})
+    )
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, 3)
+      .map(([name, amount]) => ({ name, amount }));
+
+    const latestTransactions = sortedTransactions.slice(0, 3);
 
     const highlightMessage = cycleTotals.cycleIncome === 0 && cycleTotals.cycleExpense === 0
-      ? 'Belum ada transaksi pada siklus ini. Yuk mulai catat arus kas pertamamu.'
+      ? 'Belum ada transaksi di siklus ini. Mulai dari satu catatan dulu biar ritme arus kas mulai kebaca.'
+      : averageDailyExpense === 0
+        ? `Belum ada pola pengeluaran yang kebaca. Masih ada ${remainingDays} hari sebelum hari gajian berikutnya.`
+        : remainingSafeDays !== null && remainingSafeDays >= remainingDays
+          ? `Ritme belanja masih aman. Kalau polanya begini terus, saldo diperkirakan cukup sampai hari gajian berikutnya dalam ${remainingDays} hari.`
+          : `Belanja mulai agak ngebut. Kalau polanya tidak berubah, saldo diperkirakan bertahan sekitar ${Math.max(remainingSafeDays ?? 0, 0)} hari lagi.`;
+    const paceLabel = cycleTotals.cycleIncome === 0
+      ? 'Belum ada pemasukan di siklus ini, jadi laju pengeluaran belum bisa dibandingkan.'
       : cycleBalance >= 0
-        ? `Cashflow aman. Masih tersisa Rp${new Intl.NumberFormat('id-ID').format(cycleBalance)} di siklus berjalan.`
-        : `Pengeluaran melebihi pemasukan sebesar Rp${new Intl.NumberFormat('id-ID').format(Math.abs(cycleBalance))}.`;
+        ? paceDelta <= 0
+          ? `Pengeluaran masih santai, sekitar ${Math.abs(paceDelta)}% lebih rendah dari laju waktu siklus.`
+          : `Pengeluaran sudah ${paceDelta}% lebih cepat dibanding laju waktu siklus.`
+        : `Pengeluaran sudah lebih besar dari pemasukan sebesar Rp${new Intl.NumberFormat('id-ID').format(Math.abs(cycleBalance))}.`;
 
     return {
       ...totals,
@@ -115,6 +153,14 @@ export function Dashboard({ householdId }: { householdId: string }) {
       recentTransactionCount,
       totalTransactionCount: items.length,
       highlightMessage,
+      remainingDays,
+      averageDailyExpense,
+      projectedCycleExpense,
+      remainingSafeDays,
+      spendingProgress,
+      paceLabel,
+      topExpenseCategories,
+      latestTransactions,
     };
   }, [payday, transactions]);
 

@@ -49,7 +49,7 @@ function SettingsFormSection({
 }: Omit<SettingsViewProps, 'householdId' | 'copied' | 'onCopyHouseholdId' | 'onLogout'>) {
   return (
     <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
-      <h2 className="mb-6 text-xl font-bold text-slate-900">Pengaturan</h2>
+      <h2 className="mb-6 text-xl font-bold text-slate-900">Pengaturan akun</h2>
 
       <form onSubmit={onSave} className="space-y-6">
         <div className="space-y-2">
@@ -72,10 +72,10 @@ function SettingsFormSection({
             Tanggal Gajian
           </label>
           <p className="mb-1 text-[10px] text-slate-500">
-            Siklus bulanan di Dashboard akan dimulai dari tanggal ini.
+            Siklus bulanan di halaman utama akan dimulai dari tanggal ini.
             {!isOwner && (
               <span className="mt-1 block font-medium text-rose-500">
-                * Hanya pemilik (pembuat ID) yang bisa mengubah tanggal gajian.
+                * Hanya pemilik ID yang bisa mengubah tanggal gajian.
               </span>
             )}
           </p>
@@ -104,12 +104,12 @@ function SettingsFormSection({
           ) : success ? (
             <>
               <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-              Tersimpan
+              Perubahan tersimpan
             </>
           ) : (
             <>
               <Save className="h-5 w-5" />
-              Simpan Perubahan
+              Simpan perubahan
             </>
           )}
         </button>
@@ -123,10 +123,10 @@ function HouseholdShareCard({ householdId, copied, onCopyHouseholdId }: Pick<Set
     <div className="rounded-3xl border border-indigo-100 bg-indigo-50 p-6">
       <div className="mb-2 flex items-center gap-2 font-bold text-indigo-700">
         <Users className="h-5 w-5" />
-        <h3>ID Keuangan Keluarga</h3>
+        <h3>ID keuangan keluarga</h3>
       </div>
       <p className="mb-4 text-xs text-indigo-600/70">
-        Bagikan ID ini kepada pasangan Anda agar mereka dapat bergabung dan melihat catatan keuangan yang sama.
+        Bagikan ID ini ke pasangan atau anggota rumah agar mereka bisa masuk ke catatan keuangan yang sama.
       </p>
       <div className="flex items-center gap-2">
         <div className="flex-1 rounded-2xl border border-indigo-200 bg-white p-4 text-center font-mono font-bold tracking-widest text-slate-900">
@@ -152,9 +152,9 @@ function SettingsFooter({ onLogout }: Pick<SettingsViewProps, 'onLogout'>) {
         className="flex w-full items-center justify-center gap-2 rounded-3xl border border-rose-100 bg-rose-50 px-6 py-4 font-bold text-rose-600 transition-colors hover:bg-rose-100"
       >
         <LogOut className="h-5 w-5" />
-        Keluar dari Akun
+        Keluar dari akun
       </button>
-      <p className="mt-4 text-center text-[10px] text-slate-400">Finance Sync v1.0.0</p>
+      <p className="mt-4 text-center text-[10px] text-slate-400">Finance v1.0.0</p>
     </div>
   );
 }

@@ -86,10 +86,10 @@ function TransactionFilterPanel({
         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
           <div className="mb-2 space-y-4 rounded-3xl border border-slate-100 bg-white p-4 shadow-sm">
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-700">Filter Data</h3>
+              <h3 className="text-sm font-semibold text-slate-700">Saring transaksi</h3>
               {hasActiveFilters && (
                 <button onClick={onResetFilters} className="flex items-center gap-1 text-xs font-medium text-rose-500 hover:text-rose-600">
-                  <X className="h-3 w-3" /> Reset
+                  <X className="h-3 w-3" /> Bersihkan
                 </button>
               )}
             </div>
@@ -294,7 +294,7 @@ function TransactionDetailModal({ transaction, onClose, onViewReceipt }: { trans
                     <ImageIcon className="h-5 w-5" />
                     <div>
                       <p className="text-sm font-semibold">Lihat lampiran struk</p>
-                      <p className="text-xs text-indigo-600/80">Buka viewer struk dalam layar penuh.</p>
+                      <p className="text-xs text-indigo-600/80">Buka struk dalam tampilan penuh.</p>
                     </div>
                   </div>
                   <Receipt className="h-5 w-5" />
@@ -326,11 +326,11 @@ function DeleteConfirmationModal({ deletingId, onClose, onConfirm }: { deletingI
       {deletingId && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
-            <h3 className="mb-2 text-lg font-bold text-slate-900">Hapus Transaksi?</h3>
-            <p className="mb-6 text-sm text-slate-500">Transaksi ini akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.</p>
+            <h3 className="mb-2 text-lg font-bold text-slate-900">Hapus transaksi ini?</h3>
+            <p className="mb-6 text-sm text-slate-500">Transaksi ini akan dihapus permanen dan tidak bisa dikembalikan lagi.</p>
             <div className="flex gap-3">
               <button onClick={onClose} className="flex-1 rounded-xl bg-slate-100 px-4 py-3 font-medium text-slate-700 transition-colors hover:bg-slate-200">Batal</button>
-              <button onClick={onConfirm} className="flex-1 rounded-xl bg-rose-600 px-4 py-3 font-medium text-white transition-colors hover:bg-rose-700">Ya, Hapus</button>
+              <button onClick={onConfirm} className="flex-1 rounded-xl bg-rose-600 px-4 py-3 font-medium text-white transition-colors hover:bg-rose-700">Ya, hapus</button>
             </div>
           </motion.div>
         </motion.div>
@@ -349,7 +349,7 @@ export function TransactionListView(props: TransactionListViewProps) {
           <Calendar className="h-8 w-8 text-slate-400" />
         </div>
         <h3 className="mb-1 text-base font-medium text-slate-900 sm:text-lg">Belum ada transaksi</h3>
-        <p className="text-xs text-slate-500 sm:text-sm">Ketuk tombol + untuk menambahkan transaksi pertama Anda.</p>
+        <p className="text-xs text-slate-500 sm:text-sm">Ketuk tombol + untuk mulai mencatat transaksi pertamamu.</p>
       </div>
     );
   }
@@ -357,7 +357,7 @@ export function TransactionListView(props: TransactionListViewProps) {
   return (
     <div className="space-y-6 pb-24">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-slate-900">Riwayat Transaksi</h2>
+        <h2 className="text-lg font-bold text-slate-900">Riwayat transaksi</h2>
         <button
           onClick={props.onToggleFilters}
           className={cn(
@@ -384,8 +384,8 @@ export function TransactionListView(props: TransactionListViewProps) {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
             <Filter className="h-8 w-8 text-slate-400" />
           </div>
-          <h3 className="mb-1 text-base font-medium text-slate-900 sm:text-lg">Tidak ada hasil</h3>
-          <p className="text-xs text-slate-500 sm:text-sm">Coba ubah filter untuk melihat transaksi lainnya.</p>
+          <h3 className="mb-1 text-base font-medium text-slate-900 sm:text-lg">Belum ketemu transaksi</h3>
+          <p className="text-xs text-slate-500 sm:text-sm">Coba ubah saringannya supaya transaksi lain ikut tampil.</p>
         </div>
       ) : (
         props.groupedTransactions.map((group, index) => (
