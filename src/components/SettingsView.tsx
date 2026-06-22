@@ -48,10 +48,11 @@ function SettingsFormSection({
   onSave,
 }: Omit<SettingsViewProps, 'householdId' | 'copied' | 'onCopyHouseholdId' | 'onLogout'>) {
   return (
-    <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
-      <h2 className="mb-6 text-xl font-bold text-slate-900">Pengaturan akun</h2>
+    <div className="rounded-[26px] border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/60">
+      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-500">Akun</p>
+      <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Pengaturan</h2>
 
-      <form onSubmit={onSave} className="space-y-6">
+      <form onSubmit={onSave} className="mt-6 space-y-6">
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
             <User className="h-4 w-4 text-indigo-600" />
@@ -120,21 +121,21 @@ function SettingsFormSection({
 
 function HouseholdShareCard({ householdId, copied, onCopyHouseholdId }: Pick<SettingsViewProps, 'householdId' | 'copied' | 'onCopyHouseholdId'>) {
   return (
-    <div className="rounded-3xl border border-indigo-100 bg-indigo-50 p-6">
+    <div className="rounded-[26px] border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/60">
       <div className="mb-2 flex items-center gap-2 font-bold text-indigo-700">
         <Users className="h-5 w-5" />
         <h3>ID keuangan keluarga</h3>
       </div>
-      <p className="mb-4 text-xs text-indigo-600/70">
+      <p className="mb-4 text-xs text-slate-500">
         Bagikan ID ini ke pasangan atau anggota rumah agar mereka bisa masuk ke catatan keuangan yang sama.
       </p>
       <div className="flex items-center gap-2">
-        <div className="flex-1 rounded-2xl border border-indigo-200 bg-white p-4 text-center font-mono font-bold tracking-widest text-slate-900">
+        <div className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center font-mono font-bold tracking-widest text-slate-900">
           {householdId}
         </div>
         <button
           onClick={onCopyHouseholdId}
-          className="relative rounded-2xl border border-indigo-200 bg-white p-4 text-indigo-600 transition-colors hover:bg-indigo-50"
+          className="relative rounded-2xl bg-slate-950 p-4 text-white transition-colors hover:bg-slate-800"
           title="Salin ID"
         >
           {copied ? <CheckCircle2 className="h-6 w-6 text-emerald-500" /> : <Copy className="h-6 w-6" />}
@@ -161,7 +162,7 @@ function SettingsFooter({ onLogout }: Pick<SettingsViewProps, 'onLogout'>) {
 
 export function SettingsView(props: SettingsViewProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-10">
       <SettingsFormSection {...props} />
       <HouseholdShareCard householdId={props.householdId} copied={props.copied} onCopyHouseholdId={props.onCopyHouseholdId} />
       <SettingsFooter onLogout={props.onLogout} />

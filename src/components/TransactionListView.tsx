@@ -84,7 +84,7 @@ function TransactionFilterPanel({
     <AnimatePresence>
       {filters.showFilters && (
         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-          <div className="mb-2 space-y-4 rounded-3xl border border-slate-100 bg-white p-4 shadow-sm">
+          <div className="mb-2 space-y-4 rounded-[26px] border border-slate-200/80 bg-white p-4 shadow-sm shadow-slate-200/60">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-slate-700">Saring transaksi</h3>
               {hasActiveFilters && (
@@ -159,14 +159,11 @@ function TransactionRow({
 }) {
   return (
     <div
-      className={cn(
-        'flex cursor-pointer items-center justify-between p-3 transition-colors hover:bg-slate-50 sm:p-4',
-        !isLast && 'border-b border-slate-50'
-      )}
+      className={cn('flex cursor-pointer items-center justify-between py-3 transition-colors hover:bg-slate-50/70 sm:py-4', !isLast && 'border-b border-slate-100')}
       onClick={() => onViewDetail(item)}
     >
       <div className="flex items-center gap-3 overflow-hidden sm:gap-4">
-        <div className={cn('flex shrink-0 items-center justify-center rounded-xl p-2.5 sm:rounded-2xl sm:p-3', item.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600')}>
+        <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-full', item.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600')}>
           {item.type === 'income' ? <ArrowDownRight className="h-4 w-4 sm:h-5 sm:w-5" /> : <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5" />}
         </div>
         <div className="min-w-0 flex-col justify-center">
@@ -225,7 +222,7 @@ function GroupedDateSection({
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }} className="space-y-3">
       <h3 className="px-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 sm:text-xs">{date}</h3>
-      <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-[26px] border border-slate-200/80 bg-white px-4 shadow-sm shadow-slate-200/60">
         {items.map((item, itemIndex) => (
           <TransactionRow
             key={item.id}
@@ -356,13 +353,16 @@ export function TransactionListView(props: TransactionListViewProps) {
 
   return (
     <div className="space-y-6 pb-24">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-slate-900">Riwayat transaksi</h2>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-500">Riwayat</p>
+          <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Transaksi</h2>
+        </div>
         <button
           onClick={props.onToggleFilters}
           className={cn(
-            'flex items-center gap-2 rounded-full p-2 text-sm font-medium transition-colors',
-            props.filters.showFilters || hasActiveFilters ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            'flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold transition-colors',
+            props.filters.showFilters || hasActiveFilters ? 'bg-slate-950 text-white' : 'bg-white text-slate-600 shadow-sm shadow-slate-200/70 hover:bg-slate-50'
           )}
         >
           <Filter className="h-4 w-4" />

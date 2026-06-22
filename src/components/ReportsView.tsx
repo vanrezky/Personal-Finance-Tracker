@@ -53,10 +53,10 @@ function SummaryCard({ title, value, tone }: { title: string; value: number; ton
   const Icon = isIncome ? TrendingUp : TrendingDown;
 
   return (
-    <div className={isIncome ? 'rounded-3xl border border-emerald-100 bg-emerald-50 p-5' : 'rounded-3xl border border-rose-100 bg-rose-50 p-5'}>
+    <div className={isIncome ? 'border-r border-slate-100 pr-4' : 'pl-4'}>
       <div className={isIncome ? 'mb-2 flex items-center gap-2 text-emerald-600' : 'mb-2 flex items-center gap-2 text-rose-600'}>
         <Icon className="h-4 w-4" />
-        <span className="text-xs font-bold uppercase tracking-wider">{title}</span>
+        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">{title}</span>
       </div>
       <p className={isIncome ? 'break-words text-lg font-bold text-emerald-900 sm:text-xl' : 'break-words text-lg font-bold text-rose-900 sm:text-xl'}>
         {formatCurrency(value)}
@@ -72,7 +72,7 @@ function ReportsPeriodFilter({
   onEndDateChange,
 }: Pick<ReportsViewProps, 'startDate' | 'endDate' | 'onStartDateChange' | 'onEndDateChange'>) {
   return (
-    <div className="space-y-4 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+    <div className="space-y-4 rounded-[26px] border border-slate-200/80 bg-white p-4 shadow-sm shadow-slate-200/60">
       <div className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
         <Calendar className="h-5 w-5 text-indigo-600" />
         <h3>Pilih periode</h3>
@@ -115,7 +115,7 @@ function ReportsEmptyState({ eyebrow, title, description }: { eyebrow: string; t
 
 function ReportsChartSection({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+    <div className="rounded-[26px] border border-slate-200/80 bg-white p-4 shadow-sm shadow-slate-200/60 sm:p-6">
       <div className="mb-6 flex items-center gap-2 font-semibold text-slate-900">
         {icon}
         <h3>{title}</h3>
@@ -135,7 +135,7 @@ function MonthlyExpenseSection({
   totalExpense,
 }: Pick<ReportsViewProps, 'monthlyExpenseData' | 'highestExpenseMonth' | 'averageMonthlyExpense' | 'latestMonthLabel' | 'latestMonthDelta' | 'latestMonthDeltaLabel' | 'totalExpense'>) {
   return (
-    <div className="space-y-6 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+    <div className="space-y-6 rounded-[26px] border border-slate-200/80 bg-white p-4 shadow-sm shadow-slate-200/60 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
@@ -149,7 +149,7 @@ function MonthlyExpenseSection({
           </p>
         </div>
 
-        <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 sm:max-w-xs">
+        <div className="border-t border-slate-100 pt-4 sm:max-w-xs sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
           <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-rose-500">Total periode</p>
           <p className="mt-1 text-lg font-bold text-rose-950">{formatCurrency(totalExpense)}</p>
           <p className="mt-1 text-xs text-rose-700">Dihitung dari semua transaksi pengeluaran pada rentang tanggal ini.</p>
@@ -158,18 +158,18 @@ function MonthlyExpenseSection({
 
       {monthlyExpenseData.length > 0 ? (
         <>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+          <div className="grid grid-cols-1 divide-y divide-slate-100 rounded-2xl border border-slate-200/80 bg-slate-50/70 px-4 md:grid-cols-3 md:divide-x md:divide-y-0">
+            <div className="py-4 md:pr-4">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">Bulan tertinggi</p>
               <p className="mt-2 text-sm font-semibold text-slate-900">{highestExpenseMonth?.monthLabel ?? '-'}</p>
               <p className="mt-1 text-base font-bold text-slate-950">{highestExpenseMonth ? formatCurrency(highestExpenseMonth.totalExpense) : '-'}</p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+            <div className="py-4 md:px-4">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">Rata-rata per bulan</p>
               <p className="mt-2 text-base font-bold text-slate-950">{formatCurrency(averageMonthlyExpense)}</p>
               <p className="mt-1 text-xs text-slate-500">Ada {monthlyExpenseData.length} bulan dengan catatan pengeluaran di periode ini.</p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+            <div className="py-4 md:pl-4">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">Selisih bulan terakhir</p>
               <p className="mt-2 text-sm font-semibold text-slate-900">{latestMonthLabel ?? '-'}</p>
               <p className={`mt-1 text-base font-bold ${latestMonthDelta !== null && latestMonthDelta > 0 ? 'text-rose-600' : latestMonthDelta !== null && latestMonthDelta < 0 ? 'text-emerald-600' : 'text-slate-950'}`}>
@@ -179,13 +179,13 @@ function MonthlyExpenseSection({
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="divide-y divide-slate-100">
             {monthlyExpenseData.map((item, index) => {
               const previousItem = monthlyExpenseData[index - 1];
               const delta = previousItem ? item.totalExpense - previousItem.totalExpense : null;
 
               return (
-                <div key={item.monthKey} className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm shadow-slate-100/80">
+                <div key={item.monthKey} className="py-4 first:pt-0 last:pb-0">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">{item.monthKey}</p>
@@ -252,7 +252,11 @@ export function ReportsView(props: ReportsViewProps) {
   } = props;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 pb-10">
+      <div className="px-1">
+        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-500">Laporan</p>
+        <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Analisis Keuangan</h2>
+      </div>
       <ReportsPeriodFilter
         startDate={startDate}
         endDate={endDate}
@@ -260,7 +264,7 @@ export function ReportsView(props: ReportsViewProps) {
         onEndDateChange={onEndDateChange}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 rounded-[26px] border border-slate-200/80 bg-white p-4 shadow-sm shadow-slate-200/60">
         <SummaryCard title="Pemasukan" value={totalIncome} tone="income" />
         <SummaryCard title="Pengeluaran" value={totalExpense} tone="expense" />
       </div>

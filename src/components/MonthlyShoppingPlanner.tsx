@@ -282,13 +282,11 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
   };
 
   return (
-    <section className="space-y-6 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+    <section className="space-y-6 pb-10">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <div className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
-            <ShoppingBasket className="h-5 w-5 text-amber-500" />
-            <h3>Belanja Bulanan</h3>
-          </div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-amber-500">Planner</p>
+          <h3 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Belanja Bulanan</h3>
           <p className="text-sm text-slate-500">
             Simpan daftar belanja rumah tangga per bulan, tarik item dari bulan lalu, lalu catat ke transaksi saat benar-benar dibeli.
           </p>
@@ -317,14 +315,14 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 overflow-hidden rounded-[26px] border border-slate-200/80 bg-white shadow-sm shadow-slate-200/60 md:grid-cols-4 md:divide-y-0">
         <SummaryTile label="Total item" value={`${summary.totalItems}`} tone="slate" />
         <SummaryTile label="Sudah dibeli" value={`${summary.checkedItems}`} tone="emerald" />
         <SummaryTile label="Estimasi total" value={formatCurrency(summary.estimatedTotal)} tone="amber" />
         <SummaryTile label="Masuk transaksi" value={`${summary.importedCount}`} tone="indigo" />
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+      <div className="rounded-[26px] border border-slate-200/80 bg-white p-4 shadow-sm shadow-slate-200/60">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">Progress bulan ini</p>
@@ -347,7 +345,7 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 md:grid-cols-6">
+      <form onSubmit={handleSubmit} className="grid gap-3 rounded-[26px] border border-slate-200/80 bg-white p-4 shadow-sm shadow-slate-200/60 md:grid-cols-6">
         <div className="md:col-span-2">
           <label className="mb-1 block text-xs font-medium text-slate-500">Nama item</label>
           <input
@@ -355,7 +353,7 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
             value={form.name}
             onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
             placeholder="Contoh: Beras 5kg"
-            className="w-full rounded-xl border-none bg-white px-3 py-3 text-sm text-slate-900 focus:ring-2 focus:ring-amber-500"
+            className="w-full rounded-xl border-none bg-slate-50 px-3 py-3 text-sm text-slate-900 focus:ring-2 focus:ring-amber-500"
           />
         </div>
         <div>
@@ -371,7 +369,7 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
               }));
             }}
             placeholder="0"
-            className="w-full rounded-xl border-none bg-white px-3 py-3 text-sm text-slate-900 focus:ring-2 focus:ring-amber-500"
+            className="w-full rounded-xl border-none bg-slate-50 px-3 py-3 text-sm text-slate-900 focus:ring-2 focus:ring-amber-500"
           />
         </div>
         <div>
@@ -383,7 +381,7 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
             value={form.quantity}
             onChange={(event) => setForm((current) => ({ ...current, quantity: event.target.value }))}
             placeholder="1"
-            className="w-full rounded-xl border-none bg-white px-3 py-3 text-sm text-slate-900 focus:ring-2 focus:ring-amber-500"
+            className="w-full rounded-xl border-none bg-slate-50 px-3 py-3 text-sm text-slate-900 focus:ring-2 focus:ring-amber-500"
           />
         </div>
         <div>
@@ -393,7 +391,7 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
             value={form.unit}
             onChange={(event) => setForm((current) => ({ ...current, unit: event.target.value }))}
             placeholder="kg / pcs"
-            className="w-full rounded-xl border-none bg-white px-3 py-3 text-sm text-slate-900 focus:ring-2 focus:ring-amber-500"
+            className="w-full rounded-xl border-none bg-slate-50 px-3 py-3 text-sm text-slate-900 focus:ring-2 focus:ring-amber-500"
           />
         </div>
         <div className="md:col-span-2">
@@ -403,7 +401,7 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
             value={form.notes}
             onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
             placeholder="Merek favorit atau prioritas"
-            className="w-full rounded-xl border-none bg-white px-3 py-3 text-sm text-slate-900 focus:ring-2 focus:ring-amber-500"
+            className="w-full rounded-xl border-none bg-slate-50 px-3 py-3 text-sm text-slate-900 focus:ring-2 focus:ring-amber-500"
           />
         </div>
         <div className="flex items-end gap-2 md:col-span-2">
@@ -437,13 +435,13 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
           <p className="mt-1 text-sm text-slate-500">Setelah bulan pertama terisi, bulan berikutnya tinggal klik tarik dari bulan lalu.</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="overflow-hidden rounded-[26px] border border-slate-200/80 bg-white px-4 shadow-sm shadow-slate-200/60">
           {items.map((item) => (
             <div
               key={item.id}
               className={cn(
-                'rounded-2xl border px-4 py-4 transition-colors',
-                item.isChecked ? 'border-emerald-200 bg-emerald-50/70' : 'border-slate-200 bg-white'
+                'py-4 transition-colors [&:not(:last-child)]:border-b [&:not(:last-child)]:border-slate-100',
+                item.isChecked && 'bg-emerald-50/40'
               )}
             >
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -523,14 +521,14 @@ function SummaryTile({
   tone: 'slate' | 'emerald' | 'amber' | 'indigo';
 }) {
   const toneClass = {
-    slate: 'border-slate-200 bg-slate-50 text-slate-900',
-    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-900',
-    amber: 'border-amber-200 bg-amber-50 text-amber-900',
-    indigo: 'border-indigo-200 bg-indigo-50 text-indigo-900',
+    slate: 'text-slate-900',
+    emerald: 'text-emerald-900',
+    amber: 'text-amber-900',
+    indigo: 'text-indigo-900',
   }[tone];
 
   return (
-    <div className={cn('rounded-2xl border p-4', toneClass)}>
+    <div className={cn('p-4', toneClass)}>
       <p className="text-[10px] font-bold uppercase tracking-[0.24em] opacity-70">{label}</p>
       <p className="mt-2 text-base font-bold">{value}</p>
     </div>

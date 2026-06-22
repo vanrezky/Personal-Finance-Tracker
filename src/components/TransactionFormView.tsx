@@ -431,11 +431,14 @@ export function TransactionFormView(props: TransactionFormViewProps) {
 
   return (
     <AnimatePresence>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-4 backdrop-blur-sm sm:items-center">
-        <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl">
-          <div className="flex items-center justify-between border-b border-slate-100 p-6">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-3 backdrop-blur-sm sm:items-center">
+        <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-[2rem] bg-white shadow-2xl sm:rounded-[2rem]">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <div className="flex items-center gap-3">
-              <h2 className="text-xl font-semibold text-slate-800">{title}</h2>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-500">Moni</p>
+                <h2 className="text-xl font-bold tracking-tight text-slate-950">{title}</h2>
+              </div>
               <VoiceScanActions
                 mode={props.mode}
                 isListening={props.isListening}
@@ -456,7 +459,7 @@ export function TransactionFormView(props: TransactionFormViewProps) {
             </button>
           </div>
 
-          <form onSubmit={props.onSubmit} className="space-y-6 overflow-y-auto p-6">
+          <form onSubmit={props.onSubmit} className="space-y-6 overflow-y-auto px-5 py-5">
             <div className="relative flex rounded-2xl bg-slate-100 p-1">
               <div className={cn('absolute inset-y-1 w-[calc(50%-4px)] rounded-xl bg-white shadow-sm transition-all duration-300 ease-in-out', props.type === 'income' ? 'left-1' : 'left-[calc(50%+2px)]')} />
               <button type="button" onClick={() => props.onTypeChange('income')} className={cn('z-10 flex-1 py-3 text-sm font-medium transition-colors', props.type === 'income' ? 'text-emerald-600' : 'text-slate-500 hover:text-slate-700')}>
@@ -495,7 +498,7 @@ export function TransactionFormView(props: TransactionFormViewProps) {
               onDeleteCategory={props.onDeleteCategory}
             />
 
-            <button type="submit" disabled={props.isSubmitting} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 py-4 text-lg font-semibold text-white transition-all hover:bg-slate-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70">
+            <button type="submit" disabled={props.isSubmitting} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 py-4 text-lg font-semibold text-white shadow-lg shadow-slate-900/15 transition-all hover:bg-slate-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70">
               {props.isSubmitting ? (
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
               ) : (
