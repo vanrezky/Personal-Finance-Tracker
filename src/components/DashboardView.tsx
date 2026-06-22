@@ -30,6 +30,7 @@ interface DashboardViewProps {
   cycleLength: number;
   cycleProgress: number;
   payday: number;
+  userName: string;
   savingsRate: number;
   expenseRate: number;
   recentTransactionCount: number;
@@ -124,13 +125,29 @@ export function DashboardView({
   paceLabel,
   topExpenseCategories,
   latestTransactions,
+  userName,
 }: DashboardViewProps) {
   const [isBalanceRevealed, setIsBalanceRevealed] = useState(false);
   const spendingPaceTone = spendingProgress <= cycleProgress ? 'text-emerald-700' : 'text-rose-700';
   const maskedBalance = 'Rp••••••••••';
 
+  const now = new Date();
+  const hour = now.getHours();
+  const greeting = hour < 12 ? 'Selamat Pagi' : hour < 15 ? 'Selamat Siang' : hour < 18 ? 'Selamat Sore' : 'Selamat Malam';
+  const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  const dateStr = `${now.getDate()} ${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+
   return (
     <div className="space-y-5 sm:space-y-6">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="px-1"
+      >
+        <p className="text-sm font-medium text-slate-500">{greeting}, {userName}</p>
+        <p className="mt-0.5 text-xs text-slate-400">Sekarang {dateStr}</p>
+      </motion.div>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

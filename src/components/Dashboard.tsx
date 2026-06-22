@@ -10,13 +10,17 @@ import {
   startOfDay,
   subMonths,
 } from 'date-fns';
-import { db, collection, onSnapshot, query, doc, getDoc } from '../firebase';
+import { auth, db, collection, onSnapshot, query, doc, getDoc } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { DashboardSkeleton, DashboardView } from './DashboardView';
 import type { TransactionRecord } from './financeTypes';
 
 export function Dashboard({ householdId }: { householdId: string }) {
   const [transactions, setTransactions] = useState<TransactionRecord[] | null>(null);
+
+  const userName = auth.currentUser?.displayName?.split(' ')[0]
+    || auth.currentUser?.email?.split('@')[0]
+    || 'Pengguna';
   const [payday, setPayday] = useState<number>(25);
 
   useEffect(() => {
@@ -168,5 +172,5 @@ export function Dashboard({ householdId }: { householdId: string }) {
     return <DashboardSkeleton />;
   }
 
-  return <DashboardView payday={payday} {...viewModel} />;
+  return <DashboardView payday={payday} userName={userName} {...viewModel} />;
 }
