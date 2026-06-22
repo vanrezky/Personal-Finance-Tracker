@@ -81,12 +81,14 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [searchCategory, setSearchCategory] = useState('');
   const [showAllCategories, setShowAllCategories] = useState(false);
+  const [isScanSourcePickerOpen, setIsScanSourcePickerOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<CategoryRecord | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [isSavingCategory, setIsSavingCategory] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const path = `households/${householdId}/categories`;
@@ -389,6 +391,7 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
       return;
     }
 
+    setIsScanSourcePickerOpen(false);
     setIsScanning(true);
     try {
       const image = new Image();
@@ -459,7 +462,8 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
       setReceiptScanState('error');
     } finally {
       setIsScanning(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
+      if (galleryInputRef.current) galleryInputRef.current.value = '';
     }
   };
 
@@ -523,6 +527,7 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
       receiptScanState={receiptScanState}
       isListening={isListening}
       isScanning={isScanning}
+      isScanSourcePickerOpen={isScanSourcePickerOpen}
       isSubmitting={isSubmitting}
       categoryObjects={categoryObjects}
       featuredCategoryObjects={featuredCategoryObjects}
@@ -561,10 +566,20 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
         setReceiptScanState('idle');
       }}
       onStartListening={startListening}
-      onTriggerScanReceipt={() => fileInputRef.current?.click()}
+      onOpenScanSourcePicker={() => setIsScanSourcePickerOpen(true)}
+      onCloseScanSourcePicker={() => setIsScanSourcePickerOpen(false)}
+      onTriggerCameraCapture={() => {
+        setIsScanSourcePickerOpen(false);
+        cameraInputRef.current?.click();
+      }}
+      onTriggerGalleryPick={() => {
+        setIsScanSourcePickerOpen(false);
+        galleryInputRef.current?.click();
+      }}
       onReceiptFileChange={handleScanReceipt}
       onSubmit={handleSubmit}
-      fileInputRef={fileInputRef}
+      cameraInputRef={cameraInputRef}
+      galleryInputRef={galleryInputRef}
       onCloseCategoryModal={() => setIsCategoryModalOpen(false)}
       onCategoryNameChange={setNewCategoryName}
       onSubmitCategory={handleSaveCategory}

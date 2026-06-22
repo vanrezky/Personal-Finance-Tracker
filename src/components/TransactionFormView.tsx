@@ -26,6 +26,7 @@ interface TransactionFormViewProps {
   featuredCategoryObjects: CategoryOption[];
   searchCategory: string;
   showAllCategories: boolean;
+  isScanSourcePickerOpen: boolean;
   isCategoryModalOpen: boolean;
   editingCategory: CategoryRecord | null;
   newCategoryName: string;
@@ -45,10 +46,14 @@ interface TransactionFormViewProps {
   onDateChange: (value: string) => void;
   onClearReceiptImage: () => void;
   onStartListening: () => void;
-  onTriggerScanReceipt: () => void;
+  onOpenScanSourcePicker: () => void;
+  onCloseScanSourcePicker: () => void;
+  onTriggerCameraCapture: () => void;
+  onTriggerGalleryPick: () => void;
   onReceiptFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
-  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  cameraInputRef: React.RefObject<HTMLInputElement | null>;
+  galleryInputRef: React.RefObject<HTMLInputElement | null>;
   onCloseCategoryModal: () => void;
   onCategoryNameChange: (value: string) => void;
   onSubmitCategory: (event: React.FormEvent<HTMLFormElement>) => void;
@@ -58,51 +63,110 @@ function VoiceScanActions({
   mode,
   isListening,
   isScanning,
+  isScanSourcePickerOpen,
   onStartListening,
-  onTriggerScanReceipt,
+  onOpenScanSourcePicker,
+  onCloseScanSourcePicker,
+  onTriggerCameraCapture,
+  onTriggerGalleryPick,
   onReceiptFileChange,
-  fileInputRef,
-}: Pick<TransactionFormViewProps, 'mode' | 'isListening' | 'isScanning' | 'onStartListening' | 'onTriggerScanReceipt' | 'onReceiptFileChange' | 'fileInputRef'>) {
+  cameraInputRef,
+  galleryInputRef,
+}: Pick<TransactionFormViewProps, 'mode' | 'isListening' | 'isScanning' | 'isScanSourcePickerOpen' | 'onStartListening' | 'onOpenScanSourcePicker' | 'onCloseScanSourcePicker' | 'onTriggerCameraCapture' | 'onTriggerGalleryPick' | 'onReceiptFileChange' | 'cameraInputRef' | 'galleryInputRef'>) {
   if (mode === 'edit') {
     return null;
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        onClick={onStartListening}
-        disabled={isListening || isScanning}
-        className={cn(
-          'relative rounded-full p-2 transition-all disabled:opacity-50',
-          isListening ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-        )}
-        title="Input Suara"
-      >
-        {isListening ? (
-          <>
+    <>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onStartListening}
+          disabled={isListening || isScanning}
+          className={cn(
+            'relative rounded-full p-2 transition-all disabled:opacity-50',
+            isListening ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+          )}
+          title="Input Suara"
+        >
+          {isListening ? (
+            <>
+              <Mic className="h-5 w-5" />
+              <span className="absolute inset-0 animate-ping rounded-full bg-rose-400 opacity-25" />
+            </>
+          ) : (
             <Mic className="h-5 w-5" />
-            <span className="absolute inset-0 animate-ping rounded-full bg-rose-400 opacity-25" />
-          </>
-        ) : (
-          <Mic className="h-5 w-5" />
-        )}
-      </button>
+          )}
+        </button>
 
-      <button
-        type="button"
-        onClick={onTriggerScanReceipt}
-        disabled={isListening || isScanning}
-        className={cn(
-          'relative rounded-full p-2 transition-all disabled:opacity-50',
-          isScanning ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+        <button
+          type="button"
+          onClick={onOpenScanSourcePicker}
+          disabled={isListening || isScanning}
+          className={cn(
+            'relative rounded-full p-2 transition-all disabled:opacity-50',
+            isScanning ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+          )}
+          title="Scan Struk"
+        >
+          {isScanning ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
+        </button>
+        <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} onChange={onReceiptFileChange} className="hidden" />
+        <input type="file" accept="image/*" ref={galleryInputRef} onChange={onReceiptFileChange} className="hidden" />
+      </div>
+
+      <AnimatePresence>
+        {isScanSourcePickerOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-900/40 p-4 backdrop-blur-sm sm:items-center"
+            onClick={onCloseScanSourcePicker}
+          >
+            <motion.div
+              initial={{ y: '100%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '100%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 24, stiffness: 220 }}
+              className="w-full max-w-sm rounded-3xl bg-white p-4 shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="mb-3">
+                <p className="text-sm font-semibold text-slate-900">Tambahkan foto struk</p>
+                <p className="mt-1 text-xs text-slate-500">Pilih sumber gambar seperti di aplikasi native.</p>
+              </div>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={onTriggerCameraCapture}
+                  className="flex w-full items-center gap-3 rounded-2xl bg-slate-100 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-200"
+                >
+                  <Camera className="h-4 w-4 text-slate-500" />
+                  Ambil foto
+                </button>
+                <button
+                  type="button"
+                  onClick={onTriggerGalleryPick}
+                  className="flex w-full items-center gap-3 rounded-2xl bg-slate-100 px-4 py-3 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-200"
+                >
+                  <Upload className="h-4 w-4 text-slate-500" />
+                  Pilih dari galeri
+                </button>
+                <button
+                  type="button"
+                  onClick={onCloseScanSourcePicker}
+                  className="w-full rounded-2xl bg-white px-4 py-3 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-50"
+                >
+                  Batal
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
-        title="Scan Struk"
-      >
-        {isScanning ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
-      </button>
-      <input type="file" accept="image/*" capture="environment" ref={fileInputRef} onChange={onReceiptFileChange} className="hidden" />
-    </div>
+      </AnimatePresence>
+    </>
   );
 }
 
@@ -376,10 +440,15 @@ export function TransactionFormView(props: TransactionFormViewProps) {
                 mode={props.mode}
                 isListening={props.isListening}
                 isScanning={props.isScanning}
+                isScanSourcePickerOpen={props.isScanSourcePickerOpen}
                 onStartListening={props.onStartListening}
-                onTriggerScanReceipt={props.onTriggerScanReceipt}
+                onOpenScanSourcePicker={props.onOpenScanSourcePicker}
+                onCloseScanSourcePicker={props.onCloseScanSourcePicker}
+                onTriggerCameraCapture={props.onTriggerCameraCapture}
+                onTriggerGalleryPick={props.onTriggerGalleryPick}
                 onReceiptFileChange={props.onReceiptFileChange}
-                fileInputRef={props.fileInputRef}
+                cameraInputRef={props.cameraInputRef}
+                galleryInputRef={props.galleryInputRef}
               />
             </div>
             <button onClick={props.onClose} className="rounded-full bg-slate-100 p-2 transition-colors hover:bg-slate-200">
