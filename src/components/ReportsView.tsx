@@ -252,7 +252,7 @@ export function ReportsView(props: ReportsViewProps) {
   } = props;
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-8">
       <ReportsPeriodFilter
         startDate={startDate}
         endDate={endDate}

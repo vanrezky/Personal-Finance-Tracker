@@ -41,3 +41,19 @@ export interface DailyTrendDatum {
   income: number;
   expense: number;
 }
+
+export interface ShoppingItemRecord {
+  id: string;
+  name: string;
+  estimatedAmount: number;
+  quantity?: number;
+  unit?: string;
+  notes?: string;
+  isChecked?: boolean;
+  checkedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  authorUid?: string;
+  lastTransactionId?: string;
+  lastImportedAt?: string;
+}

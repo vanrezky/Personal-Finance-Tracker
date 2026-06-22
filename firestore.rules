@@ -38,6 +38,22 @@ service cloud.firestore {
              (!('receiptImage' in data) || (data.receiptImage is string && data.receiptImage.size() <= 1000000));
     }
 
+    function isValidShoppingItem(data) {
+      return data.keys().hasAll(['name', 'estimatedAmount', 'createdAt', 'updatedAt', 'authorUid', 'isChecked']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             data.estimatedAmount is number && data.estimatedAmount >= 0 &&
+             data.createdAt is string && data.createdAt.size() > 0 && data.createdAt.size() <= 50 &&
+             data.updatedAt is string && data.updatedAt.size() > 0 && data.updatedAt.size() <= 50 &&
+             data.authorUid is string && data.authorUid.size() > 0 && data.authorUid.size() <= 100 &&
+             data.isChecked is bool &&
+             (!('quantity' in data) || (data.quantity is number && data.quantity >= 0)) &&
+             (!('unit' in data) || (data.unit is string && data.unit.size() <= 50)) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 500)) &&
+             (!('checkedAt' in data) || (data.checkedAt is string && data.checkedAt.size() <= 50)) &&
+             (!('lastTransactionId' in data) || (data.lastTransactionId is string && data.lastTransactionId.size() > 0 && data.lastTransactionId.size() <= 100)) &&
+             (!('lastImportedAt' in data) || (data.lastImportedAt is string && data.lastImportedAt.size() > 0 && data.lastImportedAt.size() <= 50));
+    }
+
     function isValidUser(data) {
       return data.keys().hasAll(['uid']) &&
              data.uid is string && data.uid.size() > 0 && data.uid.size() <= 100 &&
@@ -107,6 +123,18 @@ service cloud.firestore {
                       request.resource.data.type == resource.data.type &&
                       request.resource.data.createdAt == resource.data.createdAt &&
                       request.resource.data.authorUid == resource.data.authorUid;
+        allow delete: if isHouseholdMember(householdId);
+      }
+
+      match /shoppingMonths/{monthKey}/items/{itemId} {
+        allow read: if isHouseholdMember(householdId);
+        allow create: if isHouseholdMember(householdId) &&
+                      isValidShoppingItem(request.resource.data) &&
+                      request.resource.data.authorUid == request.auth.uid;
+        allow update: if isHouseholdMember(householdId) &&
+                      isValidShoppingItem(request.resource.data) &&
+                      request.resource.data.authorUid == resource.data.authorUid &&
+                      request.resource.data.createdAt == resource.data.createdAt;
         allow delete: if isHouseholdMember(householdId);
       }
     }

@@ -34,7 +34,7 @@ interface TransactionFormProps {
 }
 
 const EXPENSE_CATEGORIES = [
-  'Makan', 'Jajan', 'Belanja Mingguan', 'BBM Mobil', 'BBM Motor',
+  'Makan', 'Jajan', 'Belanja Mingguan', 'Belanja Bulanan', 'BBM Mobil', 'BBM Motor',
   'Service Kendaraan', 'Token Listrik', 'Tagihan Air', 'Internet & Pulsa',
   'Transportasi', 'Hiburan', 'Lainnya',
 ];
@@ -45,6 +45,7 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   Makan: ['makan', 'restoran', 'warung', 'nasi', 'dinner', 'lunch', 'sarapan'],
   Jajan: ['jajan', 'kopi', 'snack', 'cemilan', 'minum', 'starbucks', 'boba'],
   'Belanja Mingguan': ['belanja', 'pasar', 'supermarket', 'indomaret', 'alfamart', 'sayur'],
+  'Belanja Bulanan': ['belanja bulanan', 'stok bulanan', 'kebutuhan rumah', 'sabun', 'beras', 'minyak', 'telur'],
   'BBM Mobil': ['bensin mobil', 'pertamax mobil', 'solar mobil', 'isi bensin mobil'],
   'BBM Motor': ['bensin motor', 'pertamax motor', 'bensin', 'bbm', 'isi bensin'],
   'Service Kendaraan': ['service', 'bengkel', 'oli', 'ban', 'cuci mobil', 'cuci motor'],
