@@ -17,7 +17,6 @@ import {
   deleteDoc,
 } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
-import { GoogleGenAI } from '@google/genai';
 import { TransactionFormView } from './TransactionFormView';
 import type { CategoryRecord, TransactionRecord, TransactionType } from './financeTypes';
 
@@ -385,6 +384,11 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
     const file = event.target.files?.[0];
     if (!file) return;
 
+    if (!auth.currentUser) {
+      alert('Anda harus login terlebih dahulu untuk memakai scan struk.');
+      return;
+    }
+
     setIsScanning(true);
     try {
       const image = new Image();
@@ -422,42 +426,36 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
       setReceiptImage(base64DataUrl);
       setReceiptScanState('analyzing');
       URL.revokeObjectURL(objectUrl);
+      const idToken = await auth.currentUser.getIdToken();
 
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const prompt = `
-        Analisis struk belanja ini. Ekstrak informasi berikut dalam format JSON:
-        {
-          "amount": number (total belanja, angka saja tanpa titik/koma),
-          "category": string (tebak kategori dari daftar ini: ${[...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES, ...customCategories.map((item) => item.name)].join(', ')}. Jika tidak ada yang cocok, gunakan "Lainnya"),
-          "note": string (ringkasan singkat tempat belanja atau barang utama, maksimal 50 karakter)
-        }
-        Hanya kembalikan JSON yang valid.
-      `;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: {
-          parts: [
-            { inlineData: { data: base64Data, mimeType: 'image/jpeg' } },
-            { text: prompt },
-          ],
+      const response = await fetch('/api/scan-receipt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
         },
-        config: { responseMimeType: 'application/json' },
+        body: JSON.stringify({
+          imageBase64: base64Data,
+          categories: [...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES, ...customCategories.map((item) => item.name)],
+        }),
       });
 
-      if (response.text) {
-        const data = JSON.parse(response.text);
-        if (data.amount) setAmountStr(new Intl.NumberFormat('id-ID').format(data.amount));
-        if (data.category) {
-          setCategory(data.category);
-          setType(INCOME_CATEGORIES.includes(data.category) ? 'income' : 'expense');
-        }
-        if (data.note) setNote(data.note);
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Gagal menganalisa struk');
       }
+
+      if (result.amount) setAmountStr(new Intl.NumberFormat('id-ID').format(result.amount));
+      if (result.category) {
+        setCategory(result.category);
+        setType(INCOME_CATEGORIES.includes(result.category) ? 'income' : 'expense');
+      }
+      if (result.note) setNote(result.note);
       setReceiptScanState('success');
     } catch (error) {
       console.error('Error scanning receipt:', error);
-      alert('Gagal memindai struk. Pastikan gambar jelas dan coba lagi.');
+      const message = error instanceof Error ? error.message : 'Gagal memindai struk. Pastikan gambar jelas dan coba lagi.';
+      alert(message);
       setReceiptScanState('error');
     } finally {
       setIsScanning(false);
