@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import {
   ArrowDownRight,
   ArrowRight,
   ArrowUpRight,
   Clock3,
+  Eye,
+  EyeOff,
   Flame,
   Wallet,
   CalendarDays,
@@ -122,7 +125,9 @@ export function DashboardView({
   topExpenseCategories,
   latestTransactions,
 }: DashboardViewProps) {
+  const [isBalanceRevealed, setIsBalanceRevealed] = useState(false);
   const spendingPaceTone = spendingProgress <= cycleProgress ? 'text-emerald-700' : 'text-rose-700';
+  const maskedBalance = 'Rp••••••••••';
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -139,9 +144,18 @@ export function DashboardView({
         <div className="relative z-10 space-y-4 sm:space-y-5">
           <div className="space-y-3 sm:flex sm:items-start sm:justify-between sm:gap-4 sm:space-y-0">
             <div className="min-w-0">
-              <p className="mb-1 text-sm font-medium text-slate-300">Total Saldo</p>
+              <p className="mb-1 flex items-center gap-1.5 text-sm font-medium text-slate-300">
+                <span>Total Saldo</span>
+                <button
+                  type="button"
+                  onClick={() => setIsBalanceRevealed((prev) => !prev)}
+                  className="text-slate-400 hover:text-white transition-colors"
+                >
+                  {isBalanceRevealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </p>
               <h2 className="text-[2rem] font-semibold tracking-tight sm:text-[2.75rem]">
-                {formatCurrency(balance)}
+                {isBalanceRevealed ? formatCurrency(balance) : maskedBalance}
               </h2>
             </div>
 
@@ -390,7 +404,7 @@ export function DashboardView({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/60">
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 sm:tracking-[0.2em]">Saldo total</p>
-          <p className="mt-2 text-lg font-bold text-slate-900">{formatCurrency(balance)}</p>
+          <p className="mt-2 text-lg font-bold text-slate-900">{isBalanceRevealed ? formatCurrency(balance) : maskedBalance}</p>
           <p className="mt-1 text-xs text-slate-500">Akumulasi semua pemasukan & pengeluaran.</p>
         </div>
 
