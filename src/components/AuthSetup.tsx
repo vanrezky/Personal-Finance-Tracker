@@ -722,7 +722,7 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
           <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-slate-900 text-white shadow-lg shadow-indigo-200">
             <Wallet className="h-8 w-8" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">Finance Sync</h1>
+          <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">Moni Sync</h1>
           <p className="mt-2 text-sm text-slate-500 md:text-base">
             Catat keuangan bersama pasangan secara real-time dengan login Google atau email.
           </p>

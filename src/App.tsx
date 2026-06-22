@@ -210,19 +210,34 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-24">
+    <div className="min-h-screen bg-[#f5f7fb] text-slate-900 pb-24">
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-slate-200/60 bg-slate-50/85 px-6 py-4 backdrop-blur-xl">
+      <header className={cn(
+        'sticky top-0 z-30 px-6 backdrop-blur-xl',
+        activeTab === 'dashboard' ? 'border-b border-transparent bg-[#f5f7fb]/80 py-3' : 'border-b border-slate-200/60 bg-[#f5f7fb]/85 py-4'
+      )}>
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">Finance</h1>
-              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold tracking-wider text-indigo-700">v1.1.0</span>
-            </div>
-            <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
-              <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
-              <span>{activeTab === 'dashboard' ? 'Lihat kondisi uangmu hari ini' : 'Atur keuangan rumah tangga dengan lebih rapi'}</span>
-            </div>
+            {activeTab === 'dashboard' ? (
+              <div className="flex items-center gap-2">
+                <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-950 text-sm font-black text-white shadow-lg shadow-slate-900/15">M</span>
+                <div>
+                  <h1 className="text-base font-black tracking-tight text-slate-950">Moni</h1>
+                  <p className="text-xs font-medium text-slate-500">Personal money cockpit</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-bold tracking-tight text-slate-900">Moni</h1>
+                  <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold tracking-wider text-indigo-700">v1.1.0</span>
+                </div>
+                <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+                  <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+                  <span>Atur keuangan rumah tangga dengan lebih rapi</span>
+                </div>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
           {!isLoaded ? (
@@ -242,7 +257,7 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="px-6 py-8 max-w-2xl mx-auto">
+      <main className={cn('max-w-2xl mx-auto', activeTab === 'dashboard' ? 'px-5 pb-8 pt-4' : 'px-6 py-8')}>
         <AnimatePresence mode="wait">
           <motion.div
             key={isLoaded ? activeTab : 'loading'}
@@ -257,61 +272,61 @@ export default function App() {
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200/50 pb-safe">
-        <div className="flex items-center justify-around p-2 max-w-md mx-auto relative">
+      <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-transparent bg-transparent px-3 pb-3">
+        <div className="relative mx-auto flex max-w-md items-center justify-around rounded-[22px] border border-white/70 bg-slate-950/95 p-1.5 shadow-[0_16px_45px_rgba(15,23,42,0.24)] backdrop-blur-xl">
           <button
             onClick={() => setActiveTab('dashboard')}
             disabled={!isLoaded || !householdId}
             className={cn(
-              "flex flex-1 flex-col items-center rounded-2xl p-3 transition-all duration-200",
-              activeTab === 'dashboard' ? "bg-slate-100 text-slate-900 shadow-sm shadow-slate-200/80" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600",
+              "flex flex-1 flex-col items-center rounded-[18px] px-2 py-2 transition-all duration-200",
+              activeTab === 'dashboard' ? "bg-white text-slate-950 shadow-sm" : "text-slate-400 hover:bg-white/10 hover:text-white",
               (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
             )}
           >
-            <Activity className="w-6 h-6 mb-1" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider">Dashboard</span>
+            <Activity className="mb-0.5 h-5 w-5" />
+            <span className="text-[9px] font-semibold uppercase tracking-wide">Dashboard</span>
           </button>
 
           <button
             onClick={() => setActiveTab('history')}
             disabled={!isLoaded || !householdId}
             className={cn(
-              "flex flex-1 flex-col items-center rounded-2xl p-3 transition-all duration-200",
-              activeTab === 'history' ? "bg-slate-100 text-slate-900 shadow-sm shadow-slate-200/80" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600",
+              "flex flex-1 flex-col items-center rounded-[18px] px-2 py-2 transition-all duration-200",
+              activeTab === 'history' ? "bg-white text-slate-950 shadow-sm" : "text-slate-400 hover:bg-white/10 hover:text-white",
               (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
             )}
           >
-            <ListOrdered className="w-6 h-6 mb-1" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider">Riwayat</span>
+            <ListOrdered className="mb-0.5 h-5 w-5" />
+            <span className="text-[9px] font-semibold uppercase tracking-wide">Riwayat</span>
           </button>
 
           {/* Floating Action Button Placeholder for spacing */}
-          <div className="w-16" />
+          <div className="w-12" />
 
           <button
             onClick={() => setActiveTab('reports')}
             disabled={!isLoaded || !householdId}
             className={cn(
-              "flex flex-1 flex-col items-center rounded-2xl p-3 transition-all duration-200",
-              activeTab === 'reports' ? "bg-slate-100 text-slate-900 shadow-sm shadow-slate-200/80" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600",
+              "flex flex-1 flex-col items-center rounded-[18px] px-2 py-2 transition-all duration-200",
+              activeTab === 'reports' ? "bg-white text-slate-950 shadow-sm" : "text-slate-400 hover:bg-white/10 hover:text-white",
               (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
             )}
           >
-            <PieChart className="w-6 h-6 mb-1" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider">Laporan</span>
+            <PieChart className="mb-0.5 h-5 w-5" />
+            <span className="text-[9px] font-semibold uppercase tracking-wide">Laporan</span>
           </button>
 
           <button
             onClick={() => setActiveTab('settings')}
             disabled={!isLoaded || !householdId}
             className={cn(
-              "flex flex-1 flex-col items-center rounded-2xl p-3 transition-all duration-200",
-              activeTab === 'settings' ? "bg-slate-100 text-slate-900 shadow-sm shadow-slate-200/80" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600",
+              "flex flex-1 flex-col items-center rounded-[18px] px-2 py-2 transition-all duration-200",
+              activeTab === 'settings' ? "bg-white text-slate-950 shadow-sm" : "text-slate-400 hover:bg-white/10 hover:text-white",
               (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
             )}
           >
-            <SettingsIcon className="w-6 h-6 mb-1" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider">Pengaturan</span>
+            <SettingsIcon className="mb-0.5 h-5 w-5" />
+            <span className="text-[9px] font-semibold uppercase tracking-wide">Pengaturan</span>
           </button>
 
           {/* Floating Action Button */}
@@ -322,11 +337,11 @@ export default function App() {
             }}
             disabled={!isLoaded || !householdId}
             className={cn(
-              "absolute left-1/2 -top-6 -translate-x-1/2 bg-slate-900 text-white p-4 rounded-full shadow-xl shadow-slate-900/20 hover:scale-105 active:scale-95 transition-all",
+              "absolute left-1/2 -top-5 -translate-x-1/2 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 p-3 text-white shadow-[0_12px_28px_rgba(79,70,229,0.42)] ring-[3px] ring-[#f5f7fb] transition-all hover:scale-105 active:scale-95",
               (!isLoaded || !householdId) && "opacity-50 cursor-not-allowed"
             )}
           >
-            <Plus className="w-8 h-8" />
+            <Plus className="h-6 w-6" />
           </button>
         </div>
       </nav>
@@ -510,8 +525,8 @@ export default function App() {
               }}
             >
               <div className="flex items-center gap-3">
-                <img src="/android-chrome-192x192.png" alt="Finance" className="w-10 h-10 rounded-full shadow-sm" />
-                <span className="text-slate-800 font-medium text-[15px]">Add Finance to Home Screen</span>
+                <img src="/android-chrome-192x192.png" alt="Moni" className="w-10 h-10 rounded-full shadow-sm" />
+                <span className="text-slate-800 font-medium text-[15px]">Add Moni to Home Screen</span>
               </div>
               <button 
                 onClick={(e) => {

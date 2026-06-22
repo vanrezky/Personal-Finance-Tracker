@@ -154,7 +154,7 @@ function SettingsFooter({ onLogout }: Pick<SettingsViewProps, 'onLogout'>) {
         <LogOut className="h-5 w-5" />
         Keluar dari akun
       </button>
-      <p className="mt-4 text-center text-[10px] text-slate-400">Finance v1.0.0</p>
+      <p className="mt-4 text-center text-[10px] text-slate-400">Moni v1.0.0</p>
     </div>
   );
 }

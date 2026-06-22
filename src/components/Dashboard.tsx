@@ -112,7 +112,6 @@ export function Dashboard({ householdId }: { householdId: string }) {
     const spendingProgress = cycleTotals.cycleIncome > 0
       ? Math.min((cycleTotals.cycleExpense / cycleTotals.cycleIncome) * 100, 999)
       : 0;
-    const paceDelta = Math.round(spendingProgress - cycleProgress);
 
     const topExpenseCategories = Object.entries(
       cycleTransactions.reduce<Record<string, number>>((accumulator, current) => {
@@ -128,21 +127,6 @@ export function Dashboard({ householdId }: { householdId: string }) {
 
     const latestTransactions = sortedTransactions.slice(0, 3);
 
-    const highlightMessage = cycleTotals.cycleIncome === 0 && cycleTotals.cycleExpense === 0
-      ? 'Belum ada transaksi di siklus ini. Mulai dari satu catatan dulu biar ritme arus kas mulai kebaca.'
-      : averageDailyExpense === 0
-        ? `Belum ada pola pengeluaran yang kebaca. Masih ada ${remainingDays} hari sebelum hari gajian berikutnya.`
-        : remainingSafeDays !== null && remainingSafeDays >= remainingDays
-          ? `Ritme belanja masih aman. Kalau polanya begini terus, saldo diperkirakan cukup sampai hari gajian berikutnya dalam ${remainingDays} hari.`
-          : `Belanja mulai agak ngebut. Kalau polanya tidak berubah, saldo diperkirakan bertahan sekitar ${Math.max(remainingSafeDays ?? 0, 0)} hari lagi.`;
-    const paceLabel = cycleTotals.cycleIncome === 0
-      ? 'Belum ada pemasukan di siklus ini, jadi laju pengeluaran belum bisa dibandingkan.'
-      : cycleBalance >= 0
-        ? paceDelta <= 0
-          ? `Pengeluaran masih santai, sekitar ${Math.abs(paceDelta)}% lebih rendah dari laju waktu siklus.`
-          : `Pengeluaran sudah ${paceDelta}% lebih cepat dibanding laju waktu siklus.`
-        : `Pengeluaran sudah lebih besar dari pemasukan sebesar Rp${new Intl.NumberFormat('id-ID').format(Math.abs(cycleBalance))}.`;
-
     return {
       ...totals,
       ...cycleTotals,
@@ -156,13 +140,11 @@ export function Dashboard({ householdId }: { householdId: string }) {
       expenseRate,
       recentTransactionCount,
       totalTransactionCount: items.length,
-      highlightMessage,
       remainingDays,
       averageDailyExpense,
       projectedCycleExpense,
       remainingSafeDays,
       spendingProgress,
-      paceLabel,
       topExpenseCategories,
       latestTransactions,
     };
