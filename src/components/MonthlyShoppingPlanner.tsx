@@ -620,31 +620,31 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1">
                   <button
                     type="button"
                     onClick={() => handleImportTransaction(item)}
                     disabled={importingId === item.id}
-                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 transition-colors hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    title={importingId === item.id ? 'Mencatat...' : 'Catat transaksi'}
+                    className="inline-flex items-center justify-center rounded-xl bg-indigo-50 p-2 text-indigo-700 transition-colors hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <ClipboardPlus className="h-3.5 w-3.5" />
-                    {importingId === item.id ? 'Mencatat...' : 'Catat transaksi'}
+                    <ClipboardPlus className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
                     onClick={() => handleEdit(item)}
-                    className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-200"
+                    title="Edit"
+                    className="inline-flex items-center justify-center rounded-xl bg-slate-100 p-2 text-slate-700 transition-colors hover:bg-slate-200"
                   >
-                    <Pencil className="h-3.5 w-3.5" />
-                    Edit
+                    <Pencil className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDelete(item.id)}
-                    className="inline-flex items-center gap-2 rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-100"
+                    title="Hapus"
+                    className="inline-flex items-center justify-center rounded-xl bg-rose-50 p-2 text-rose-700 transition-colors hover:bg-rose-100"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Hapus
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               </div>
