@@ -49,10 +49,7 @@ function SettingsFormSection({
 }: Omit<SettingsViewProps, 'householdId' | 'copied' | 'onCopyHouseholdId' | 'onLogout'>) {
   return (
     <div className="rounded-[26px] border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/60">
-      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-500">Akun</p>
-      <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Pengaturan</h2>
-
-      <form onSubmit={onSave} className="mt-6 space-y-6">
+      <form onSubmit={onSave} className="space-y-6">
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
             <User className="h-4 w-4 text-indigo-600" />
@@ -163,6 +160,11 @@ function SettingsFooter({ onLogout }: Pick<SettingsViewProps, 'onLogout'>) {
 export function SettingsView(props: SettingsViewProps) {
   return (
     <div className="space-y-6 pb-10">
+      <div className="px-1">
+        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-500">Akun</p>
+        <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Pengaturan</h2>
+        <p className="mt-1 text-sm font-medium text-slate-500">Atur identitas, siklus gaji, dan akses keluarga.</p>
+      </div>
       <SettingsFormSection {...props} />
       <HouseholdShareCard householdId={props.householdId} copied={props.copied} onCopyHouseholdId={props.onCopyHouseholdId} />
       <SettingsFooter onLogout={props.onLogout} />

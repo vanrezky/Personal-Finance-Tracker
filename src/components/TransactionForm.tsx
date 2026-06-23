@@ -33,13 +33,13 @@ interface TransactionFormProps {
   initialData?: TransactionRecord;
 }
 
-const EXPENSE_CATEGORIES = [
+export const EXPENSE_CATEGORIES = [
   'Makan', 'Jajan', 'Belanja Mingguan', 'Belanja Bulanan', 'BBM Mobil', 'BBM Motor',
   'Service Kendaraan', 'Token Listrik', 'Tagihan Air', 'Internet & Pulsa',
   'Transportasi', 'Hiburan', 'Lainnya',
 ];
 
-const INCOME_CATEGORIES = ['Gaji', 'Bonus', 'Hasil Usaha', 'Investasi', 'Pemberian', 'Lainnya'];
+export const INCOME_CATEGORIES = ['Gaji', 'Bonus', 'Hasil Usaha', 'Investasi', 'Pemberian', 'Lainnya'];
 
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   Makan: ['makan', 'restoran', 'warung', 'nasi', 'dinner', 'lunch', 'sarapan'],

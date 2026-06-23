@@ -7,6 +7,8 @@ import {
   Eye,
   EyeOff,
   Flame,
+  ShoppingBasket,
+  Tags,
   Wallet,
   CalendarDays,
   TrendingUp,
@@ -42,6 +44,8 @@ interface DashboardViewProps {
   spendingProgress: number;
   topExpenseCategories: Array<{ name: string; amount: number }>;
   latestTransactions: TransactionRecord[];
+  onOpenShoppingPlanner: () => void;
+  onOpenCategories: () => void;
 }
 
 export function DashboardSkeleton() {
@@ -97,6 +101,8 @@ export function DashboardView({
   spendingProgress,
   topExpenseCategories,
   latestTransactions,
+  onOpenShoppingPlanner,
+  onOpenCategories,
   userName,
 }: DashboardViewProps) {
   const [isBalanceRevealed, setIsBalanceRevealed] = useState(false);
@@ -191,6 +197,31 @@ export function DashboardView({
             </div>
           </div>
         </div>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.04 }}
+        className="flex flex-wrap gap-2 px-1"
+      >
+        <button
+          type="button"
+          onClick={onOpenShoppingPlanner}
+          className="inline-flex min-w-[34%] items-center justify-center gap-2 rounded-full bg-slate-950 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm shadow-slate-900/15 transition-all active:scale-[0.98]"
+        >
+          <ShoppingBasket className="h-4 w-4 text-amber-300" />
+          <span>Belanja bulanan</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={onOpenCategories}
+          className="inline-flex min-w-[28%] items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-700 shadow-sm shadow-slate-200/60 transition-all active:scale-[0.98]"
+        >
+          <Tags className="h-4 w-4 text-indigo-600" />
+          <span>Kategori</span>
+        </button>
       </motion.div>
 
       <motion.div

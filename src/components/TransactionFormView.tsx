@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertCircle, Camera, Check, ChevronDown, ChevronUp, Edit2, Loader2, Mic, Plus, Search, Trash2, Upload, X } from 'lucide-react';
+import { AlertCircle, ArrowDownRight, ArrowUpRight, Camera, Check, ChevronDown, ChevronUp, Edit2, Loader2, Mic, Plus, Search, Trash2, Upload, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { CategoryRecord, TransactionType } from './financeTypes';
 
@@ -462,11 +462,13 @@ export function TransactionFormView(props: TransactionFormViewProps) {
           <form onSubmit={props.onSubmit} className="space-y-6 overflow-y-auto px-5 py-5">
             <div className="relative flex rounded-2xl bg-slate-100 p-1">
               <div className={cn('absolute inset-y-1 w-[calc(50%-4px)] rounded-xl bg-white shadow-sm transition-all duration-300 ease-in-out', props.type === 'income' ? 'left-1' : 'left-[calc(50%+2px)]')} />
-              <button type="button" onClick={() => props.onTypeChange('income')} className={cn('z-10 flex-1 py-3 text-sm font-medium transition-colors', props.type === 'income' ? 'text-emerald-600' : 'text-slate-500 hover:text-slate-700')}>
-                Pemasukan
+              <button type="button" onClick={() => props.onTypeChange('income')} className={cn('z-10 flex flex-1 items-center justify-center gap-2 py-3 text-sm font-medium transition-colors', props.type === 'income' ? 'text-emerald-600' : 'text-slate-500 hover:text-slate-700')}>
+                <ArrowDownRight className="h-4 w-4" />
+                <span>Pemasukan</span>
               </button>
-              <button type="button" onClick={() => props.onTypeChange('expense')} className={cn('z-10 flex-1 py-3 text-sm font-medium transition-colors', props.type === 'expense' ? 'text-rose-600' : 'text-slate-500 hover:text-slate-700')}>
-                Pengeluaran
+              <button type="button" onClick={() => props.onTypeChange('expense')} className={cn('z-10 flex flex-1 items-center justify-center gap-2 py-3 text-sm font-medium transition-colors', props.type === 'expense' ? 'text-rose-600' : 'text-slate-500 hover:text-slate-700')}>
+                <ArrowUpRight className="h-4 w-4" />
+                <span>Pengeluaran</span>
               </button>
             </div>
 

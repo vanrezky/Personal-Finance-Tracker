@@ -6,8 +6,9 @@ import { AuthSetup } from './components/AuthSetup';
 import { Reports } from './components/Reports';
 import { Settings } from './components/Settings';
 import { MonthlyShoppingPlanner } from './components/MonthlyShoppingPlanner';
+import { CategoriesPage } from './components/CategoriesPage';
 import { auth, db, logout, onSnapshot, collection, query, orderBy, setDoc, doc, getDoc } from './firebase';
-import { Plus, Activity, ListOrdered, LogOut, Download, CloudOff, PieChart, Settings as SettingsIcon, Share, PlusSquare, X, MoreVertical, Sparkles, ShoppingBasket } from 'lucide-react';
+import { Plus, Activity, ListOrdered, LogOut, Download, CloudOff, PieChart, Settings as SettingsIcon, Share, PlusSquare, X, MoreVertical } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { handleFirestoreError, OperationType } from './lib/firestore-errors';
@@ -17,8 +18,7 @@ export default function App() {
   const [householdId, setHouseholdId] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'history' | 'reports' | 'settings'>('dashboard');
-  const [historyView, setHistoryView] = useState<'transactions' | 'shopping'>('transactions');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'history' | 'reports' | 'settings' | 'shopping' | 'categories'>('dashboard');
   const [isLoaded, setIsLoaded] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -154,90 +154,49 @@ export default function App() {
 
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard householdId={householdId} />;
+        return (
+          <Dashboard
+            householdId={householdId}
+            onOpenShoppingPlanner={() => setActiveTab('shopping')}
+            onOpenCategories={() => setActiveTab('categories')}
+          />
+        );
       case 'history':
         return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 rounded-2xl bg-slate-100 p-1">
-              <button
-                type="button"
-                onClick={() => setHistoryView('transactions')}
-                className={cn(
-                  'flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all',
-                  historyView === 'transactions'
-                    ? 'bg-white text-slate-900 shadow-sm shadow-slate-200/80'
-                    : 'text-slate-500 hover:text-slate-700'
-                )}
-              >
-                <ListOrdered className="h-4 w-4" />
-                <span>Transaksi</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setHistoryView('shopping')}
-                className={cn(
-                  'flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all',
-                  historyView === 'shopping'
-                    ? 'bg-white text-slate-900 shadow-sm shadow-slate-200/80'
-                    : 'text-slate-500 hover:text-slate-700'
-                )}
-              >
-                <ShoppingBasket className="h-4 w-4" />
-                <span>Belanja Bulanan</span>
-              </button>
-            </div>
-
-            {historyView === 'transactions' ? (
-              <TransactionList
-                householdId={householdId}
-                onEdit={(transaction) => {
-                  setEditingTransaction(transaction);
-                  setIsFormOpen(true);
-                }}
-              />
-            ) : (
-              <MonthlyShoppingPlanner householdId={householdId} />
-            )}
-          </div>
+          <TransactionList
+            householdId={householdId}
+            onEdit={(transaction) => {
+              setEditingTransaction(transaction);
+              setIsFormOpen(true);
+            }}
+          />
         );
+      case 'shopping':
+        return <MonthlyShoppingPlanner householdId={householdId} />;
+      case 'categories':
+        return <CategoriesPage householdId={householdId} />;
       case 'reports':
         return <Reports householdId={householdId} />;
       case 'settings':
         return <Settings householdId={householdId} onLogout={() => setShowLogoutConfirm(true)} />;
       default:
-        return <Dashboard householdId={householdId} />;
+        return <Dashboard householdId={householdId} onOpenShoppingPlanner={() => setActiveTab('shopping')} onOpenCategories={() => setActiveTab('categories')} />;
     }
   };
 
   return (
     <div className="min-h-screen bg-[#f5f7fb] text-slate-900 pb-24">
       {/* Header */}
-      <header className={cn(
-        'sticky top-0 z-30 px-6 backdrop-blur-xl',
-        activeTab === 'dashboard' ? 'border-b border-transparent bg-[#f5f7fb]/80 py-3' : 'border-b border-slate-200/60 bg-[#f5f7fb]/85 py-4'
-      )}>
+      <header className="sticky top-0 z-30 border-b border-transparent bg-[#f5f7fb]/80 px-6 py-3 backdrop-blur-xl">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
           <div className="min-w-0">
-            {activeTab === 'dashboard' ? (
-              <div className="flex items-center gap-2">
-                <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-950 text-sm font-black text-white shadow-lg shadow-slate-900/15">M</span>
-                <div>
-                  <h1 className="text-base font-black tracking-tight text-slate-950">Moni</h1>
-                  <p className="text-xs font-medium text-slate-500">Personal money cockpit</p>
-                </div>
+            <div className="flex items-center gap-2">
+              <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-950 text-sm font-black text-white shadow-lg shadow-slate-900/15">M</span>
+              <div>
+                <h1 className="text-base font-black tracking-tight text-slate-950">Moni</h1>
+                <p className="text-xs font-medium text-slate-500">Personal money cockpit</p>
               </div>
-            ) : (
-              <>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-bold tracking-tight text-slate-900">Moni</h1>
-                  <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold tracking-wider text-indigo-700">v1.1.0</span>
-                </div>
-                <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
-                  <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
-                  <span>Atur keuangan rumah tangga dengan lebih rapi</span>
-                </div>
-              </>
-            )}
+            </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
           {!isLoaded ? (
@@ -257,7 +216,7 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className={cn('max-w-2xl mx-auto', activeTab === 'dashboard' ? 'px-5 pb-8 pt-4' : 'px-6 py-8')}>
+      <main className="mx-auto max-w-2xl px-5 pb-8 pt-4">
         <AnimatePresence mode="wait">
           <motion.div
             key={isLoaded ? activeTab : 'loading'}

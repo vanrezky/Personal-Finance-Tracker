@@ -15,7 +15,15 @@ import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { DashboardSkeleton, DashboardView } from './DashboardView';
 import type { TransactionRecord } from './financeTypes';
 
-export function Dashboard({ householdId }: { householdId: string }) {
+export function Dashboard({
+  householdId,
+  onOpenShoppingPlanner,
+  onOpenCategories,
+}: {
+  householdId: string;
+  onOpenShoppingPlanner: () => void;
+  onOpenCategories: () => void;
+}) {
   const [transactions, setTransactions] = useState<TransactionRecord[] | null>(null);
 
   const userName = auth.currentUser?.displayName?.split(' ')[0]
@@ -154,5 +162,13 @@ export function Dashboard({ householdId }: { householdId: string }) {
     return <DashboardSkeleton />;
   }
 
-  return <DashboardView payday={payday} userName={userName} {...viewModel} />;
+  return (
+    <DashboardView
+      payday={payday}
+      userName={userName}
+      onOpenShoppingPlanner={onOpenShoppingPlanner}
+      onOpenCategories={onOpenCategories}
+      {...viewModel}
+    />
+  );
 }
