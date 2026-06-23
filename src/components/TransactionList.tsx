@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { format, parseISO, subDays } from 'date-fns';
 import type { DocumentData, QueryDocumentSnapshot, QueryConstraint } from 'firebase/firestore';
 import { db, collection, query, orderBy, onSnapshot, doc, deleteDoc, getDocs, limit, startAfter, where } from '../firebase';
@@ -43,6 +43,7 @@ export function TransactionList({ householdId, refreshKey, onEdit }: { household
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStartDate, setFilterStartDate] = useState(() => getDurationDateRange('today').startDate);
   const [filterEndDate, setFilterEndDate] = useState(() => getDurationDateRange('today').endDate);
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
 
   const fetchTransactionsPage = useCallback(async (mode: 'reset' | 'append', cursor?: QueryDocumentSnapshot<DocumentData> | null) => {
     const path = `households/${householdId}/transactions`;
@@ -97,6 +98,28 @@ export function TransactionList({ householdId, refreshKey, onEdit }: { household
     setHasMoreTransactions(false);
     void fetchTransactionsPage('reset');
   }, [fetchTransactionsPage]);
+
+  useEffect(() => {
+    const sentinel = loadMoreSentinelRef.current;
+    if (!sentinel || !hasMoreTransactions || isLoadingMoreTransactions) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (!entry?.isIntersecting) return;
+        if (!hasMoreTransactions || isLoadingMoreTransactions || !lastTransactionSnapshot) return;
+        void fetchTransactionsPage('append', lastTransactionSnapshot);
+      },
+      {
+        root: null,
+        rootMargin: '200px 0px',
+        threshold: 0,
+      }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [fetchTransactionsPage, hasMoreTransactions, isLoadingMoreTransactions, lastTransactionSnapshot]);
 
   useEffect(() => {
     const path = `households/${householdId}/categories`;
@@ -188,6 +211,7 @@ export function TransactionList({ householdId, refreshKey, onEdit }: { household
       deletingId={deletingId}
       hasMoreTransactions={hasMoreTransactions}
       isLoadingMoreTransactions={isLoadingMoreTransactions}
+      loadMoreSentinelRef={loadMoreSentinelRef}
       viewingReceipt={viewingReceipt}
       viewingDetail={viewingDetail}
       onToggleFilters={() => setShowFilters((value) => !value)}
@@ -216,10 +240,6 @@ export function TransactionList({ householdId, refreshKey, onEdit }: { household
         setFilterCategory('');
         setFilterStartDate(range.startDate);
         setFilterEndDate(range.endDate);
-      }}
-      onLoadMoreTransactions={() => {
-        if (!hasMoreTransactions || isLoadingMoreTransactions || !lastTransactionSnapshot) return;
-        void fetchTransactionsPage('append', lastTransactionSnapshot);
       }}
       onViewDetail={setViewingDetail}
       onCloseDetail={() => setViewingDetail(null)}
