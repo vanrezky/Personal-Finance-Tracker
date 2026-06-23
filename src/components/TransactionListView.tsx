@@ -1,3 +1,6 @@
+import { useMemo, useState } from 'react';
+import { DayPicker, type DateRange } from 'react-day-picker';
+import 'react-day-picker/style.css';
 import { AnimatePresence, motion } from 'motion/react';
 import type { RefObject } from 'react';
 import {
@@ -15,6 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { id } from 'date-fns/locale';
 import { cn, formatCurrency } from '../lib/utils';
 import { Skeleton } from './Skeleton';
 import type { TransactionDurationFilter } from './TransactionList';
@@ -84,103 +88,108 @@ export function TransactionListSkeleton() {
   );
 }
 
-function TransactionFilterPanel({
-  filters,
-  uniqueCategories,
-  onDurationFilterChange,
-  onCategoryFilterChange,
-  onStartDateFilterChange,
-  onEndDateFilterChange,
-  onResetFilters,
-}: Pick<TransactionListViewProps, 'filters' | 'uniqueCategories' | 'onDurationFilterChange' | 'onCategoryFilterChange' | 'onStartDateFilterChange' | 'onEndDateFilterChange' | 'onResetFilters'>) {
+function TransactionFilterPanel({ filters, uniqueCategories, onDurationFilterChange, onCategoryFilterChange, onStartDateFilterChange, onEndDateFilterChange, onResetFilters, }: Pick<TransactionListViewProps, 'filters' | 'uniqueCategories' | 'onDurationFilterChange' | 'onCategoryFilterChange' | 'onStartDateFilterChange' | 'onEndDateFilterChange' | 'onResetFilters'>) {
   const hasActiveFilters = Boolean(filters.category || filters.startDate || filters.endDate);
   const canEditDateRange = filters.duration === 'all';
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const selectedRange = useMemo<DateRange | undefined>(() => ({
+    from: filters.startDate ? parseISO(filters.startDate) : undefined,
+    to: filters.endDate ? parseISO(filters.endDate) : undefined,
+  }), [filters.endDate, filters.startDate]);
+
+  const dateRangeLabel = formatDateRangeLabel(filters.startDate, filters.endDate);
+
+  const applyRange = (range: DateRange | undefined) => {
+    onStartDateFilterChange(range?.from ? format(range.from, 'yyyy-MM-dd') : '');
+    onEndDateFilterChange(range?.to ? format(range.to, 'yyyy-MM-dd') : '');
+  };
+
+  if (!filters.showFilters) {
+    return null;
+  }
 
   return (
     <AnimatePresence>
-      {filters.showFilters && (
-        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-          <div className="mb-2 space-y-4 rounded-[26px] border border-slate-200/80 bg-white p-4 shadow-sm shadow-slate-200/60">
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-700">Saring transaksi</h3>
-              {hasActiveFilters && (
-                <button onClick={onResetFilters} className="flex items-center gap-1 text-xs font-medium text-rose-500 hover:text-rose-600">
-                  <X className="h-3 w-3" /> Bersihkan
-                </button>
-              )}
-            </div>
-
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <label className="px-1 text-xs font-medium text-slate-500">Durasi</label>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {durationFilterOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => onDurationFilterChange(option.value)}
-                      className={cn(
-                        'rounded-xl px-3 py-2 text-xs font-semibold transition-colors sm:text-sm',
-                        filters.duration === option.value
-                          ? 'bg-slate-950 text-white'
-                          : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-                      )}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="px-1 text-xs font-medium text-slate-500">Kategori</label>
-                <select
-                  value={filters.category}
-                  onChange={(event) => onCategoryFilterChange(event.target.value)}
-                  className="w-full rounded-xl border-none bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">Semua Kategori</option>
-                  {uniqueCategories.filter(Boolean).map((category) => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
-                </select>
-              </div>
-
-              {canEditDateRange && (
-                <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <label className="px-1 text-xs font-medium text-slate-500">Dari Tanggal</label>
-                      <input
-                        type="date"
-                        value={filters.startDate}
-                        onChange={(event) => onStartDateFilterChange(event.target.value)}
-                        className="w-full rounded-xl border-none bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="px-1 text-xs font-medium text-slate-500">Sampai Tanggal</label>
-                      <input
-                        type="date"
-                        value={filters.endDate}
-                        onChange={(event) => onEndDateFilterChange(event.target.value)}
-                        disabled={!filters.startDate}
-                        min={filters.startDate}
-                        className="w-full rounded-xl border-none bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
-                      />
-                    </div>
-                  </div>
-                  {!filters.startDate && (
-                    <p className="px-1 text-[10px] italic text-slate-400">* Pilih 'Dari Tanggal' terlebih dahulu untuk mengatur 'Sampai Tanggal'.</p>
-                  )}
-                </>
-              )}
-            </div>
+      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+        <div className="mb-5 space-y-4 rounded-[26px] border border-slate-100 bg-white p-4 shadow-sm shadow-slate-200/50">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {durationFilterOptions.map((option) => (
+              <button key={option.value} onClick={() => onDurationFilterChange(option.value)} className={cn('rounded-2xl px-3 py-2 text-xs font-semibold transition-colors', filters.duration === option.value ? 'bg-slate-950 text-white shadow-lg shadow-slate-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200')}>
+                {option.label}
+              </button>
+            ))}
           </div>
-        </motion.div>
+
+          <div className="grid gap-3 sm:grid-cols-[1fr_1.2fr_auto]">
+            <label className="space-y-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Kategori</span>
+              <select value={filters.category} onChange={(event) => onCategoryFilterChange(event.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white">
+                <option value="">Semua kategori</option>
+                {uniqueCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+              </select>
+            </label>
+
+            <div className="space-y-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Rentang tanggal</span>
+              <button type="button" disabled={!canEditDateRange} onClick={() => setIsDatePickerOpen(true)} className={cn('flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-medium outline-none transition', canEditDateRange ? 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-white' : 'cursor-not-allowed border-slate-100 bg-slate-100 text-slate-400')}>
+                <span className="min-w-0 truncate">{canEditDateRange ? dateRangeLabel : 'Pilih Semua untuk ubah tanggal'}</span>
+                <Calendar className="h-4 w-4 shrink-0 text-slate-400" />
+              </button>
+            </div>
+
+            <button type="button" disabled={!hasActiveFilters && filters.duration === 'last7days'} onClick={onResetFilters} className="self-end rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-500 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50">
+              Reset
+            </button>
+          </div>
+        </div>
+      </motion.div>
+
+      {isDatePickerOpen && (
+        <DateRangePickerSheet selectedRange={selectedRange} onClose={() => setIsDatePickerOpen(false)} onApply={(range) => { applyRange(range); setIsDatePickerOpen(false); }} />
       )}
     </AnimatePresence>
   );
+}
+
+function DateRangePickerSheet({ selectedRange, onApply, onClose }: {
+  selectedRange: DateRange | undefined;
+  onApply: (range: DateRange | undefined) => void;
+  onClose: () => void;
+}) {
+  const [draftRange, setDraftRange] = useState<DateRange | undefined>(selectedRange);
+  const today = new Date();
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/40 px-3 pb-3 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
+      <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 28, stiffness: 240 }} className="w-full max-w-md overflow-hidden rounded-[28px] bg-white shadow-2xl sm:rounded-3xl" onClick={(event) => event.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Filter riwayat</p>
+            <h3 className="text-lg font-bold text-slate-950">Pilih tanggal</h3>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-full bg-slate-100 p-2 text-slate-500 transition hover:bg-slate-200"><X className="h-5 w-5" /></button>
+        </div>
+
+        <div className="space-y-4 p-4">
+          <div className="rounded-3xl border border-slate-100 p-2">
+            <DayPicker mode="range" selected={draftRange} onSelect={setDraftRange} locale={id} captionLayout="dropdown" className="finance-date-picker" disabled={{ after: today }} />
+          </div>
+
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setDraftRange(undefined)} className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-200">Hapus</button>
+            <button type="button" onClick={() => onApply(draftRange)} className="flex-1 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-200/70 transition hover:bg-slate-800">Terapkan</button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function formatDateRangeLabel(startDate: string, endDate: string) {
+  if (!startDate && !endDate) return 'Semua tanggal';
+  if (startDate && endDate) return format(parseISO(startDate), 'dd MMM yyyy', { locale: id }) + ' - ' + format(parseISO(endDate), 'dd MMM yyyy', { locale: id });
+  if (startDate) return 'Mulai ' + format(parseISO(startDate), 'dd MMM yyyy', { locale: id });
+  return 'Sampai ' + format(parseISO(endDate), 'dd MMM yyyy', { locale: id });
 }
 
 function TransactionRow({
