@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { format, parseISO, subDays } from 'date-fns';
-import { db, collection, query, orderBy, onSnapshot, doc, deleteDoc } from '../firebase';
+import type { DocumentData, QueryDocumentSnapshot, QueryConstraint } from 'firebase/firestore';
+import { db, collection, query, orderBy, onSnapshot, doc, deleteDoc, getDocs, limit, startAfter, where } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { TransactionListSkeleton, TransactionListView } from './TransactionListView';
 import type { TransactionRecord } from './financeTypes';
 
 export type TransactionDurationFilter = 'today' | 'yesterday' | 'last7days' | 'all';
+
+const TRANSACTION_PAGE_SIZE = 30;
 
 function getDurationDateRange(duration: Exclude<TransactionDurationFilter, 'all'>) {
   const today = new Date();
@@ -26,8 +29,11 @@ function getDurationDateRange(duration: Exclude<TransactionDurationFilter, 'all'
   };
 }
 
-export function TransactionList({ householdId, onEdit }: { householdId: string; onEdit: (transaction: TransactionRecord) => void }) {
+export function TransactionList({ householdId, refreshKey, onEdit }: { householdId: string; refreshKey: number; onEdit: (transaction: TransactionRecord) => void }) {
   const [transactions, setTransactions] = useState<TransactionRecord[] | null>(null);
+  const [lastTransactionSnapshot, setLastTransactionSnapshot] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [hasMoreTransactions, setHasMoreTransactions] = useState(false);
+  const [isLoadingMoreTransactions, setIsLoadingMoreTransactions] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [viewingReceipt, setViewingReceipt] = useState<string | null>(null);
   const [viewingDetail, setViewingDetail] = useState<TransactionRecord | null>(null);
@@ -38,27 +44,59 @@ export function TransactionList({ householdId, onEdit }: { householdId: string; 
   const [filterStartDate, setFilterStartDate] = useState(() => getDurationDateRange('today').startDate);
   const [filterEndDate, setFilterEndDate] = useState(() => getDurationDateRange('today').endDate);
 
-  useEffect(() => {
+  const fetchTransactionsPage = useCallback(async (mode: 'reset' | 'append', cursor?: QueryDocumentSnapshot<DocumentData> | null) => {
     const path = `households/${householdId}/transactions`;
-    const q = query(collection(db, path), orderBy('date', 'desc'));
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const data = snapshot.docs.map((snapshotDoc) => ({
-          id: snapshotDoc.id,
-          ...(snapshotDoc.data() as Omit<TransactionRecord, 'id'>),
-        }));
-        setTransactions(data);
-      },
-      (error) => {
-        handleFirestoreError(error, OperationType.LIST, path);
-        setTransactions([]);
+    if (mode === 'append') {
+      setIsLoadingMoreTransactions(true);
+    }
+
+    try {
+      const constraints: QueryConstraint[] = [];
+
+      if (filterStartDate) {
+        constraints.push(where('date', '>=', `${filterStartDate}T00:00:00.000Z`));
       }
-    );
 
-    return () => unsubscribe();
-  }, [householdId]);
+      if (filterEndDate) {
+        constraints.push(where('date', '<=', `${filterEndDate}T23:59:59.999Z`));
+      }
+
+      constraints.push(orderBy('date', 'desc'));
+
+      if (mode === 'append' && cursor) {
+        constraints.push(startAfter(cursor));
+      }
+
+      constraints.push(limit(TRANSACTION_PAGE_SIZE));
+
+      const snapshot = await getDocs(query(collection(db, path), ...constraints));
+      const data = snapshot.docs.map((snapshotDoc) => ({
+        id: snapshotDoc.id,
+        ...(snapshotDoc.data() as Omit<TransactionRecord, 'id'>),
+      }));
+
+      setTransactions((current) => mode === 'append' ? [...(current ?? []), ...data] : data);
+      setLastTransactionSnapshot(snapshot.docs.at(-1) ?? null);
+      setHasMoreTransactions(snapshot.docs.length === TRANSACTION_PAGE_SIZE);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, path);
+      if (mode === 'reset') {
+        setTransactions([]);
+        setLastTransactionSnapshot(null);
+        setHasMoreTransactions(false);
+      }
+    } finally {
+      setIsLoadingMoreTransactions(false);
+    }
+  }, [filterEndDate, filterStartDate, householdId, refreshKey]);
+
+  useEffect(() => {
+    setTransactions(null);
+    setLastTransactionSnapshot(null);
+    setHasMoreTransactions(false);
+    void fetchTransactionsPage('reset');
+  }, [fetchTransactionsPage]);
 
   useEffect(() => {
     const path = `households/${householdId}/categories`;
@@ -84,6 +122,7 @@ export function TransactionList({ householdId, onEdit }: { householdId: string; 
     const path = `households/${householdId}/transactions/${deletingId}`;
     try {
       await deleteDoc(doc(db, path));
+      setTransactions((current) => current?.filter((transaction) => transaction.id !== deletingId) ?? current);
       setDeletingId(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, path);
@@ -147,6 +186,8 @@ export function TransactionList({ householdId, onEdit }: { householdId: string; 
         endDate: filterEndDate,
       }}
       deletingId={deletingId}
+      hasMoreTransactions={hasMoreTransactions}
+      isLoadingMoreTransactions={isLoadingMoreTransactions}
       viewingReceipt={viewingReceipt}
       viewingDetail={viewingDetail}
       onToggleFilters={() => setShowFilters((value) => !value)}
@@ -175,6 +216,10 @@ export function TransactionList({ householdId, onEdit }: { householdId: string; 
         setFilterCategory('');
         setFilterStartDate(range.startDate);
         setFilterEndDate(range.endDate);
+      }}
+      onLoadMoreTransactions={() => {
+        if (!hasMoreTransactions || isLoadingMoreTransactions || !lastTransactionSnapshot) return;
+        void fetchTransactionsPage('append', lastTransactionSnapshot);
       }}
       onViewDetail={setViewingDetail}
       onCloseDetail={() => setViewingDetail(null)}

@@ -10,7 +10,7 @@ import {
   signOut,
   updateProfile,
 } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, query, orderBy, addDoc, updateDoc, deleteDoc, where, getDocs, writeBatch, limit } from 'firebase/firestore';
+import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, query, orderBy, addDoc, updateDoc, deleteDoc, where, getDocs, writeBatch, limit, startAfter } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -46,6 +46,7 @@ export {
   query,
   setDoc,
   signInWithEmailAndPassword,
+  startAfter,
   updateDoc,
   updateProfile,
   where,

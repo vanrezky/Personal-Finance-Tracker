@@ -7,7 +7,7 @@ import { Reports } from './components/Reports';
 import { Settings } from './components/Settings';
 import { MonthlyShoppingPlanner } from './components/MonthlyShoppingPlanner';
 import { CategoriesPage } from './components/CategoriesPage';
-import { auth, db, logout, onSnapshot, collection, query, orderBy, setDoc, doc, getDoc } from './firebase';
+import { auth, db, logout, onSnapshot, collection, query, orderBy, setDoc, doc, getDoc, limit } from './firebase';
 import { Plus, Activity, ListOrdered, LogOut, Download, CloudOff, PieChart, Settings as SettingsIcon, Share, PlusSquare, X, MoreVertical } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -18,6 +18,7 @@ export default function App() {
   const [householdId, setHouseholdId] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
+  const [transactionListRefreshKey, setTransactionListRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'history' | 'reports' | 'settings' | 'shopping' | 'categories'>('dashboard');
   const [isLoaded, setIsLoaded] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -101,7 +102,8 @@ export default function App() {
     const path = `households/${householdId}/transactions`;
     const q = query(
       collection(db, path),
-      orderBy('createdAt', 'desc')
+      orderBy('createdAt', 'desc'),
+      limit(25)
     );
 
     let isInitialLoad = true;
@@ -165,6 +167,7 @@ export default function App() {
         return (
           <TransactionList
             householdId={householdId}
+            refreshKey={transactionListRefreshKey}
             onEdit={(transaction) => {
               setEditingTransaction(transaction);
               setIsFormOpen(true);
@@ -312,6 +315,7 @@ export default function App() {
           onClose={() => {
             setIsFormOpen(false);
             setEditingTransaction(null);
+            setTransactionListRefreshKey((value) => value + 1);
           }} 
           initialData={editingTransaction}
         />

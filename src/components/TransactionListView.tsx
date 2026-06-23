@@ -40,6 +40,8 @@ interface TransactionListViewProps {
   filters: TransactionFilters;
   uniqueCategories: string[];
   deletingId: string | null;
+  hasMoreTransactions: boolean;
+  isLoadingMoreTransactions: boolean;
   viewingReceipt: string | null;
   viewingDetail: TransactionRecord | null;
   onToggleFilters: () => void;
@@ -48,6 +50,7 @@ interface TransactionListViewProps {
   onStartDateFilterChange: (value: string) => void;
   onEndDateFilterChange: (value: string) => void;
   onResetFilters: () => void;
+  onLoadMoreTransactions: () => void;
   onViewDetail: (transaction: TransactionRecord) => void;
   onCloseDetail: () => void;
   onViewReceipt: (receipt: string | null) => void;
@@ -373,6 +376,21 @@ function DeleteConfirmationModal({ deletingId, onClose, onConfirm }: { deletingI
   );
 }
 
+function LoadMoreTransactionsButton({ isLoading, onLoadMore }: { isLoading: boolean; onLoadMore: () => void }) {
+  return (
+    <div className="flex justify-center pt-2">
+      <button
+        type="button"
+        onClick={onLoadMore}
+        disabled={isLoading}
+        className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+      >
+        {isLoading ? 'Memuat...' : 'Muat transaksi lagi'}
+      </button>
+    </div>
+  );
+}
+
 export function TransactionListView(props: TransactionListViewProps) {
   const hasActiveFilters = Boolean(props.filters.category || props.filters.startDate || props.filters.endDate);
 
@@ -425,20 +443,31 @@ export function TransactionListView(props: TransactionListViewProps) {
           </div>
           <h3 className="mb-1 text-base font-medium text-slate-900 sm:text-lg">Belum ketemu transaksi</h3>
           <p className="text-xs text-slate-500 sm:text-sm">Coba ubah saringannya supaya transaksi lain ikut tampil.</p>
+          {props.hasMoreTransactions && (
+            <div className="mt-5">
+              <LoadMoreTransactionsButton isLoading={props.isLoadingMoreTransactions} onLoadMore={props.onLoadMoreTransactions} />
+            </div>
+          )}
         </div>
       ) : (
-        props.groupedTransactions.map((group, index) => (
-          <GroupedDateSection
-            key={group.date}
-            date={group.date}
-            items={group.items}
-            index={index}
-            onViewDetail={props.onViewDetail}
-            onViewReceipt={props.onViewReceipt}
-            onRequestDelete={props.onRequestDelete}
-            onEdit={props.onEdit}
-          />
-        ))
+        <>
+          {props.groupedTransactions.map((group, index) => (
+            <GroupedDateSection
+              key={group.date}
+              date={group.date}
+              items={group.items}
+              index={index}
+              onViewDetail={props.onViewDetail}
+              onViewReceipt={props.onViewReceipt}
+              onRequestDelete={props.onRequestDelete}
+              onEdit={props.onEdit}
+            />
+          ))}
+
+          {props.hasMoreTransactions && (
+            <LoadMoreTransactionsButton isLoading={props.isLoadingMoreTransactions} onLoadMore={props.onLoadMoreTransactions} />
+          )}
+        </>
       )}
 
       <DeleteConfirmationModal deletingId={props.deletingId} onClose={() => props.onRequestDelete(null)} onConfirm={props.onConfirmDelete} />
