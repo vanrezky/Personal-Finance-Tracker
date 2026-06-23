@@ -189,7 +189,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
     const ai = new GoogleGenAI({ apiKey });
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: { parts: [{ text: `${SYSTEM_PROMPT}\n\n${buildPrompt(groupedItems, currentShoppingNames)}` }] },
       config: { responseMimeType: 'application/json' },
     });

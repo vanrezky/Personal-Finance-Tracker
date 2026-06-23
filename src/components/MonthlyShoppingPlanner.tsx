@@ -242,37 +242,47 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
         return;
       }
 
-      const idToken = await auth.currentUser.getIdToken();
-      const response = await fetch('/api/shopping-ai', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({
-          groupedItems: recommendations,
-          currentShoppingNames: currentShoppingNames.map((n) => n.trim().toLowerCase()),
-          monthKey: selectedMonth,
-        }),
-      });
+      let apiItems: Array<{ name: string; estimatedAmount: number }> = [];
+      let usedAI = false;
 
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: 'Gagal memproses' }));
-        throw new Error(err.error || 'Gagal memproses analisa AI');
+      try {
+        const idToken = await auth.currentUser.getIdToken();
+        const response = await fetch('/api/shopping-ai', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({
+            groupedItems: recommendations,
+            currentShoppingNames: currentShoppingNames.map((n) => n.trim().toLowerCase()),
+            monthKey: selectedMonth,
+          }),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.recommendations && result.recommendations.length > 0) {
+            apiItems = result.recommendations;
+            usedAI = true;
+          }
+        }
+      } catch {
+        // API gagal — fallback ke rule-based
       }
 
-      const result = await response.json();
-
-      if (!result.recommendations || result.recommendations.length === 0) {
-        alert('AI tidak merekomendasikan item baru untuk daftar belanja.');
-        return;
+      if (apiItems.length === 0) {
+        apiItems = recommendations.map((r) => ({
+          name: r.name,
+          estimatedAmount: r.frequency > 0 ? Math.round(r.totalAmount / r.frequency) : r.totalAmount,
+        }));
       }
 
       const path = `households/${householdId}/shoppingMonths/${selectedMonth}/items`;
       const batch = writeBatch(db);
       let addedCount = 0;
 
-      for (const rec of result.recommendations) {
+      for (const rec of apiItems) {
         const name = rec.name?.trim();
         if (!name) continue;
 
@@ -298,12 +308,13 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
       }
 
       if (addedCount === 0) {
-        alert('Semua rekomendasi AI sudah ada di daftar belanja.');
+        alert('Semua rekomendasi sudah ada di daftar belanja.');
         return;
       }
 
       await batch.commit();
-      alert(`${addedCount} item berhasil ditambahkan ke daftar belanja berdasarkan analisa AI.`);
+      const label = usedAI ? 'AI' : 'rule-based';
+      alert(`${addedCount} item berhasil ditambahkan ke daftar belanja (${label}).`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Gagal memproses analisa AI';
       alert(message);
