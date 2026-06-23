@@ -580,73 +580,76 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
           <p className="mt-1 text-sm text-slate-500">Atau tambah item manual satu per satu menggunakan form di atas.</p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-[26px] border border-slate-200/80 bg-white px-4 shadow-sm shadow-slate-200/60">
+        <div className="overflow-hidden rounded-[26px] border border-slate-200/80 bg-white shadow-sm shadow-slate-200/60">
           {items.map((item) => (
             <div
               key={item.id}
               className={cn(
-                'py-4 transition-colors [&:not(:last-child)]:border-b [&:not(:last-child)]:border-slate-100',
-                item.isChecked && 'bg-emerald-50/40'
+                'flex items-center gap-3 px-4 py-3.5 transition-colors [&:not(:last-child)]:border-b [&:not(:last-child)]:border-slate-100',
+                item.isChecked && 'bg-emerald-50/30'
               )}
             >
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start gap-3">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleChecked(item)}
-                      className={cn(
-                        'mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-colors',
-                        item.isChecked ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 bg-white text-transparent hover:border-emerald-400'
-                      )}
-                    >
-                      <Check className="h-3.5 w-3.5" />
-                    </button>
-                    <div className="min-w-0">
-                      <p className={cn('text-sm font-semibold', item.isChecked ? 'text-emerald-900 line-through' : 'text-slate-900')}>
-                        {item.name}
-                      </p>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-                        <span>{formatCurrency(item.estimatedAmount || 0)}</span>
-                        {(item.quantity || item.unit) && (
-                          <span>
-                            {item.quantity ? item.quantity : '-'} {item.unit || ''}
-                          </span>
-                        )}
-                        {item.lastImportedAt && <span className="text-indigo-600">Sudah masuk transaksi</span>}
-                      </div>
-                      {item.notes && <p className="mt-2 text-sm text-slate-600">{item.notes}</p>}
-                    </div>
-                  </div>
-                </div>
+              <button
+                type="button"
+                onClick={() => handleToggleChecked(item)}
+                className={cn(
+                  'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors',
+                  item.isChecked
+                    ? 'border-emerald-500 bg-emerald-500 text-white'
+                    : 'border-slate-300 bg-white text-transparent hover:border-emerald-400'
+                )}
+              >
+                <Check className="h-3 w-3" />
+              </button>
 
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => handleImportTransaction(item)}
-                    disabled={importingId === item.id}
-                    title={importingId === item.id ? 'Mencatat...' : 'Catat transaksi'}
-                    className="inline-flex items-center justify-center rounded-xl bg-indigo-50 p-2 text-indigo-700 transition-colors hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <ClipboardPlus className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleEdit(item)}
-                    title="Edit"
-                    className="inline-flex items-center justify-center rounded-xl bg-slate-100 p-2 text-slate-700 transition-colors hover:bg-slate-200"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(item.id)}
-                    title="Hapus"
-                    className="inline-flex items-center justify-center rounded-xl bg-rose-50 p-2 text-rose-700 transition-colors hover:bg-rose-100"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+              <div className="min-w-0 flex-1">
+                <p className={cn('text-sm font-medium', item.isChecked ? 'text-slate-400 line-through' : 'text-slate-900')}>
+                  {item.name}
+                </p>
+                <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-400">
+                  <span>{formatCurrency(item.estimatedAmount || 0)}</span>
+                  {(item.quantity || item.unit) && (
+                    <>
+                      <span className="text-slate-300">&middot;</span>
+                      <span>{item.quantity ? item.quantity : '-'} {item.unit || ''}</span>
+                    </>
+                  )}
+                  {item.lastImportedAt && (
+                    <>
+                      <span className="text-slate-300">&middot;</span>
+                      <span className="text-indigo-500">Sudah</span>
+                    </>
+                  )}
                 </div>
+                {item.notes && <p className="mt-1 text-xs text-slate-500">{item.notes}</p>}
+              </div>
+
+              <div className="flex shrink-0 items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => handleImportTransaction(item)}
+                  disabled={importingId === item.id}
+                  title={importingId === item.id ? 'Mencatat...' : 'Catat transaksi'}
+                  className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-40"
+                >
+                  <ClipboardPlus className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleEdit(item)}
+                  title="Edit"
+                  className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(item.id)}
+                  title="Hapus"
+                  className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
             </div>
           ))}
