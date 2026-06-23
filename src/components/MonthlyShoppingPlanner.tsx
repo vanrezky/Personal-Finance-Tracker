@@ -17,8 +17,12 @@ import {
 } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { cn, formatCurrency } from '../lib/utils';
-import type { ShoppingItemRecord } from './financeTypes';
-import { ArchiveRestore, Check, ClipboardPlus, Pencil, ShoppingBasket, Trash2 } from 'lucide-react';
+import type { ShoppingItemRecord, TransactionRecord } from './financeTypes';
+import { generateInsight } from '../lib/shoppingAI';
+import { ArchiveRestore, Check, ClipboardPlus, Loader2, Pencil, Sparkles, Trash2 } from 'lucide-react';
+
+const WEEKLY_CATEGORY = 'Belanja Mingguan';
+const MONTHLY_CATEGORY = 'Belanja Bulanan';
 
 interface MonthlyShoppingPlannerProps {
   householdId: string;
@@ -54,6 +58,7 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncingPreviousMonth, setSyncingPreviousMonth] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const [importingId, setImportingId] = useState<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [form, setForm] = useState<ShoppingFormState>(EMPTY_FORM);
@@ -191,6 +196,122 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
     }
   };
 
+  const fetchTransactionsForAI = async (
+    fromDate: string,
+    toDate: string
+  ): Promise<TransactionRecord[]> => {
+    const path = `households/${householdId}/transactions`;
+    const q = query(
+      collection(db, path),
+      orderBy('date', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs
+      .map((d) => ({ id: d.id, ...(d.data() as Omit<TransactionRecord, 'id'>) }))
+      .filter((t) => {
+        if (t.type !== 'expense') return false;
+        if (t.category !== WEEKLY_CATEGORY && t.category !== MONTHLY_CATEGORY) return false;
+        return t.date >= fromDate && t.date <= toDate;
+      });
+  };
+
+  const handleAIAnalyze = async () => {
+    if (!auth.currentUser || aiLoading) return;
+
+    setAiLoading(true);
+    try {
+      const monthStart = parseISO(`${selectedMonth}-01`);
+      const threeMonthsAgo = subMonths(monthStart, 3);
+      const fromDate = format(threeMonthsAgo, 'yyyy-MM-dd');
+      const toDate = format(
+        new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0),
+        'yyyy-MM-dd'
+      );
+
+      const transactions = await fetchTransactionsForAI(fromDate, toDate);
+      const currentShoppingNames = items.map((i) => i.name);
+
+      const { recommendations, totalCount: txnCount } = generateInsight(transactions, currentShoppingNames);
+
+      if (recommendations.length === 0) {
+        if (txnCount === 0) {
+          alert('Belum ada transaksi kategori belanja mingguan/bulanan untuk dianalisis.');
+        } else {
+          alert('Item dari transaksi sudah ada semua di daftar belanja.');
+        }
+        return;
+      }
+
+      const idToken = await auth.currentUser.getIdToken();
+      const response = await fetch('/api/shopping-ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          groupedItems: recommendations,
+          currentShoppingNames: currentShoppingNames.map((n) => n.trim().toLowerCase()),
+          monthKey: selectedMonth,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: 'Gagal memproses' }));
+        throw new Error(err.error || 'Gagal memproses analisa AI');
+      }
+
+      const result = await response.json();
+
+      if (!result.recommendations || result.recommendations.length === 0) {
+        alert('AI tidak merekomendasikan item baru untuk daftar belanja.');
+        return;
+      }
+
+      const path = `households/${householdId}/shoppingMonths/${selectedMonth}/items`;
+      const batch = writeBatch(db);
+      let addedCount = 0;
+
+      for (const rec of result.recommendations) {
+        const name = rec.name?.trim();
+        if (!name) continue;
+
+        const alreadyExists = items.some(
+          (item) => normalizeName(item.name) === name.toLowerCase()
+        );
+        if (alreadyExists) continue;
+
+        const estimatedAmount = typeof rec.estimatedAmount === 'number' && rec.estimatedAmount > 0
+          ? rec.estimatedAmount
+          : 0;
+
+        const ref = doc(collection(db, path));
+        batch.set(ref, {
+          name,
+          estimatedAmount,
+          isChecked: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          authorUid: auth.currentUser.uid,
+        });
+        addedCount += 1;
+      }
+
+      if (addedCount === 0) {
+        alert('Semua rekomendasi AI sudah ada di daftar belanja.');
+        return;
+      }
+
+      await batch.commit();
+      alert(`${addedCount} item berhasil ditambahkan ke daftar belanja berdasarkan analisa AI.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Gagal memproses analisa AI';
+      alert(message);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const handleCopyPreviousMonth = async () => {
     if (!auth.currentUser || syncingPreviousMonth) return;
 
@@ -288,7 +409,7 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-amber-500">Planner</p>
           <h3 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Belanja Bulanan</h3>
           <p className="text-sm text-slate-500">
-            Simpan daftar belanja rumah tangga per bulan, tarik item dari bulan lalu, lalu catat ke transaksi saat benar-benar dibeli.
+            Simpan daftar belanja rumah tangga per bulan, tarik item dari transaksi dengan AI, atau salin dari bulan lalu.
           </p>
         </div>
 
@@ -303,6 +424,19 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
             }}
             className="rounded-2xl border-none bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 focus:ring-2 focus:ring-amber-500"
           />
+          <button
+            type="button"
+            onClick={handleAIAnalyze}
+            disabled={aiLoading}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition-all hover:from-indigo-600 hover:to-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {aiLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            {aiLoading ? 'Menganalisa transaksi...' : 'Tarik data transaksi'}
+          </button>
           <button
             type="button"
             onClick={handleCopyPreviousMonth}
@@ -328,7 +462,7 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
             <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">Progress bulan ini</p>
             <p className="mt-1 text-sm font-semibold text-slate-900">
               {summary.totalItems === 0
-                ? 'Belum ada daftar. Mulai dari item inti seperti beras, telur, minyak, dan sabun.'
+                ? 'Belum ada daftar. Klik "Tarik data transaksi" untuk mengisi otomatis dari riwayat belanja.'
                 : `${summary.completionRate}% item sudah ditandai selesai.`}
             </p>
           </div>
@@ -431,8 +565,8 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
       ) : items.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center">
           <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">Belum ada daftar</p>
-          <p className="mt-2 text-sm font-semibold text-slate-700">Mulai dari item yang paling rutin dibeli setiap bulan.</p>
-          <p className="mt-1 text-sm text-slate-500">Setelah bulan pertama terisi, bulan berikutnya tinggal klik tarik dari bulan lalu.</p>
+          <p className="mt-2 text-sm font-semibold text-slate-700">Klik "Tarik data transaksi" untuk mengisi otomatis.</p>
+          <p className="mt-1 text-sm text-slate-500">Atau tambah item manual satu per satu menggunakan form di atas.</p>
         </div>
       ) : (
         <div className="overflow-hidden rounded-[26px] border border-slate-200/80 bg-white px-4 shadow-sm shadow-slate-200/60">

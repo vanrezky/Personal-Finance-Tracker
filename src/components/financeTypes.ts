@@ -57,3 +57,46 @@ export interface ShoppingItemRecord {
   lastTransactionId?: string;
   lastImportedAt?: string;
 }
+
+export interface ShoppingAIInsight {
+  householdId: string;
+  monthKey: string;
+  generatedAt: string;
+  sourceRange: {
+    from: string;
+    to: string;
+  };
+  totals: {
+    weeklyTotal: number;
+    monthlyTotal: number;
+    combinedTotal: number;
+    previousCombinedTotal: number;
+    changePercent: number;
+  };
+  topItems: Array<{
+    normalizedName: string;
+    sourceNames: string[];
+    frequency: number;
+    totalAmount: number;
+    sourceCategory: '03' | '04' | 'both';
+  }>;
+  recommendations: Array<{
+    normalizedName: string;
+    displayName: string;
+    reason: string;
+    estimatedAmount: number;
+    priority: 'high' | 'medium' | 'low';
+    sourceNames: string[];
+  }>;
+  rejectedNames: string[];
+}
+
+export interface ShoppingAIReview {
+  insightId: string;
+  normalizedName: string;
+  accepted: boolean;
+  rejectedReason?: string;
+  createdAt: string;
+}
+
+export type AnalysisStatus = 'idle' | 'loading' | 'analyzing' | 'success' | 'error' | 'empty';
