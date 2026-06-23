@@ -60,6 +60,7 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
   const [syncingPreviousMonth, setSyncingPreviousMonth] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [importingId, setImportingId] = useState<string | null>(null);
+  const [bulkImporting, setBulkImporting] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [form, setForm] = useState<ShoppingFormState>(EMPTY_FORM);
 
@@ -106,6 +107,11 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
       completionRate: totalItems > 0 ? Math.round((checkedItems / totalItems) * 100) : 0,
     };
   }, [items]);
+
+  const checkedItemsPendingImport = useMemo(
+    () => items.filter((item) => item.isChecked && !item.lastImportedAt),
+    [items]
+  );
 
   const resetForm = () => {
     setForm(EMPTY_FORM);
@@ -377,6 +383,10 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
 
   const handleImportTransaction = async (item: ShoppingItemRecord) => {
     if (!auth.currentUser || importingId) return;
+    if (item.lastImportedAt) {
+      alert('Item ini sudah pernah dicatat ke transaksi.');
+      return;
+    }
     if (item.estimatedAmount <= 0) {
       alert('Isi estimasi harga dulu sebelum dicatat ke transaksi.');
       return;
@@ -410,6 +420,63 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
       handleFirestoreError(error, OperationType.CREATE, transactionPath);
     } finally {
       setImportingId(null);
+    }
+  };
+
+  const handleImportCheckedItems = async () => {
+    if (!auth.currentUser || bulkImporting) return;
+
+    if (checkedItemsPendingImport.length === 0) {
+      alert('Belum ada item dicentang yang siap ditambahkan ke transaksi.');
+      return;
+    }
+
+    const itemsReadyToImport = checkedItemsPendingImport.filter((item) => item.estimatedAmount > 0);
+    const skippedCount = checkedItemsPendingImport.length - itemsReadyToImport.length;
+
+    if (itemsReadyToImport.length === 0) {
+      alert('Semua item yang dicentang masih belum punya estimasi harga.');
+      return;
+    }
+
+    setBulkImporting(true);
+    try {
+      const batch = writeBatch(db);
+      const transactionPath = `households/${householdId}/transactions`;
+      const itemBasePath = `households/${householdId}/shoppingMonths/${selectedMonth}/items`;
+      const timestamp = new Date().toISOString();
+
+      itemsReadyToImport.forEach((item) => {
+        const transactionRef = doc(collection(db, transactionPath));
+        batch.set(transactionRef, {
+          householdId,
+          type: 'expense',
+          amount: item.estimatedAmount,
+          category: MONTHLY_CATEGORY,
+          note: item.notes ? `${item.name} - ${item.notes}` : item.name,
+          date: timestamp,
+          createdAt: timestamp,
+          authorUid: auth.currentUser?.uid,
+          authorName: auth.currentUser?.displayName || auth.currentUser?.email || '',
+        });
+
+        batch.update(doc(db, `${itemBasePath}/${item.id}`), {
+          isChecked: true,
+          checkedAt: item.checkedAt || timestamp,
+          lastTransactionId: transactionRef.id,
+          lastImportedAt: timestamp,
+          updatedAt: timestamp,
+        });
+      });
+
+      await batch.commit();
+
+      const skippedMessage = skippedCount > 0 ? ` ${skippedCount} item dilewati karena estimasi masih kosong.` : '';
+      alert(`${itemsReadyToImport.length} item berhasil ditambahkan ke transaksi.${skippedMessage}`);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `households/${householdId}/transactions`);
+    } finally {
+      setBulkImporting(false);
     }
   };
 
@@ -581,6 +648,25 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
         </div>
       ) : (
         <div className="overflow-hidden rounded-[26px] border border-slate-200/80 bg-white shadow-sm shadow-slate-200/60">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+            <div>
+              <p className="text-xs font-semibold text-slate-900">Daftar item bulan ini</p>
+              <p className="text-xs text-slate-500">
+                {checkedItemsPendingImport.length > 0
+                  ? `${checkedItemsPendingImport.length} item dicentang siap ditambahkan ke transaksi.`
+                  : 'Centang item yang ingin langsung dicatat ke transaksi.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleImportCheckedItems}
+              disabled={bulkImporting || checkedItemsPendingImport.length === 0}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <ClipboardPlus className="h-4 w-4" />
+              {bulkImporting ? 'Menambahkan...' : 'Tambahkan semua'}
+            </button>
+          </div>
           {items.map((item) => (
             <div
               key={item.id}
@@ -628,8 +714,14 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
                 <button
                   type="button"
                   onClick={() => handleImportTransaction(item)}
-                  disabled={importingId === item.id}
-                  title={importingId === item.id ? 'Mencatat...' : 'Catat transaksi'}
+                  disabled={importingId === item.id || !!item.lastImportedAt}
+                  title={
+                    item.lastImportedAt
+                      ? 'Sudah masuk transaksi'
+                      : importingId === item.id
+                        ? 'Mencatat...'
+                        : 'Catat transaksi'
+                  }
                   className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-40"
                 >
                   <ClipboardPlus className="h-4 w-4" />
