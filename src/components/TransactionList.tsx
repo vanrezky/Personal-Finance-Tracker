@@ -1,9 +1,30 @@
 import { useEffect, useMemo, useState } from 'react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, subDays } from 'date-fns';
 import { db, collection, query, orderBy, onSnapshot, doc, deleteDoc } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { TransactionListSkeleton, TransactionListView } from './TransactionListView';
 import type { TransactionRecord } from './financeTypes';
+
+export type TransactionDurationFilter = 'today' | 'yesterday' | 'last7days' | 'all';
+
+function getDurationDateRange(duration: Exclude<TransactionDurationFilter, 'all'>) {
+  const today = new Date();
+
+  if (duration === 'today') {
+    const date = format(today, 'yyyy-MM-dd');
+    return { startDate: date, endDate: date };
+  }
+
+  if (duration === 'yesterday') {
+    const date = format(subDays(today, 1), 'yyyy-MM-dd');
+    return { startDate: date, endDate: date };
+  }
+
+  return {
+    startDate: format(subDays(today, 7), 'yyyy-MM-dd'),
+    endDate: format(today, 'yyyy-MM-dd'),
+  };
+}
 
 export function TransactionList({ householdId, onEdit }: { householdId: string; onEdit: (transaction: TransactionRecord) => void }) {
   const [transactions, setTransactions] = useState<TransactionRecord[] | null>(null);
@@ -12,9 +33,10 @@ export function TransactionList({ householdId, onEdit }: { householdId: string; 
   const [viewingDetail, setViewingDetail] = useState<TransactionRecord | null>(null);
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [filterDuration, setFilterDuration] = useState<TransactionDurationFilter>('today');
   const [filterCategory, setFilterCategory] = useState('');
-  const [filterStartDate, setFilterStartDate] = useState('');
-  const [filterEndDate, setFilterEndDate] = useState('');
+  const [filterStartDate, setFilterStartDate] = useState(() => getDurationDateRange('today').startDate);
+  const [filterEndDate, setFilterEndDate] = useState(() => getDurationDateRange('today').endDate);
 
   useEffect(() => {
     const path = `households/${householdId}/transactions`;
@@ -119,6 +141,7 @@ export function TransactionList({ householdId, onEdit }: { householdId: string; 
       uniqueCategories={viewModel.uniqueCategories}
       filters={{
         showFilters,
+        duration: filterDuration,
         category: filterCategory,
         startDate: filterStartDate,
         endDate: filterEndDate,
@@ -127,6 +150,19 @@ export function TransactionList({ householdId, onEdit }: { householdId: string; 
       viewingReceipt={viewingReceipt}
       viewingDetail={viewingDetail}
       onToggleFilters={() => setShowFilters((value) => !value)}
+      onDurationFilterChange={(value) => {
+        setFilterDuration(value);
+
+        if (value === 'all') {
+          setFilterStartDate('');
+          setFilterEndDate('');
+          return;
+        }
+
+        const range = getDurationDateRange(value);
+        setFilterStartDate(range.startDate);
+        setFilterEndDate(range.endDate);
+      }}
       onCategoryFilterChange={setFilterCategory}
       onStartDateFilterChange={(value) => {
         setFilterStartDate(value);
@@ -134,9 +170,11 @@ export function TransactionList({ householdId, onEdit }: { householdId: string; 
       }}
       onEndDateFilterChange={setFilterEndDate}
       onResetFilters={() => {
+        const range = getDurationDateRange('today');
+        setFilterDuration('today');
         setFilterCategory('');
-        setFilterStartDate('');
-        setFilterEndDate('');
+        setFilterStartDate(range.startDate);
+        setFilterEndDate(range.endDate);
       }}
       onViewDetail={setViewingDetail}
       onCloseDetail={() => setViewingDetail(null)}

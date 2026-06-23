@@ -16,14 +16,23 @@ import {
 import { format, parseISO } from 'date-fns';
 import { cn, formatCurrency } from '../lib/utils';
 import { Skeleton } from './Skeleton';
+import type { TransactionDurationFilter } from './TransactionList';
 import type { TransactionRecord } from './financeTypes';
 
 interface TransactionFilters {
   showFilters: boolean;
+  duration: TransactionDurationFilter;
   category: string;
   startDate: string;
   endDate: string;
 }
+
+const durationFilterOptions: Array<{ value: TransactionDurationFilter; label: string }> = [
+  { value: 'today', label: 'Hari ini' },
+  { value: 'yesterday', label: 'Kemarin' },
+  { value: 'last7days', label: '7 hari lalu' },
+  { value: 'all', label: 'Semua' },
+];
 
 interface TransactionListViewProps {
   transactions: TransactionRecord[];
@@ -34,6 +43,7 @@ interface TransactionListViewProps {
   viewingReceipt: string | null;
   viewingDetail: TransactionRecord | null;
   onToggleFilters: () => void;
+  onDurationFilterChange: (value: TransactionDurationFilter) => void;
   onCategoryFilterChange: (value: string) => void;
   onStartDateFilterChange: (value: string) => void;
   onEndDateFilterChange: (value: string) => void;
@@ -73,12 +83,14 @@ export function TransactionListSkeleton() {
 function TransactionFilterPanel({
   filters,
   uniqueCategories,
+  onDurationFilterChange,
   onCategoryFilterChange,
   onStartDateFilterChange,
   onEndDateFilterChange,
   onResetFilters,
-}: Pick<TransactionListViewProps, 'filters' | 'uniqueCategories' | 'onCategoryFilterChange' | 'onStartDateFilterChange' | 'onEndDateFilterChange' | 'onResetFilters'>) {
+}: Pick<TransactionListViewProps, 'filters' | 'uniqueCategories' | 'onDurationFilterChange' | 'onCategoryFilterChange' | 'onStartDateFilterChange' | 'onEndDateFilterChange' | 'onResetFilters'>) {
   const hasActiveFilters = Boolean(filters.category || filters.startDate || filters.endDate);
+  const canEditDateRange = filters.duration === 'all';
 
   return (
     <AnimatePresence>
@@ -96,6 +108,27 @@ function TransactionFilterPanel({
 
             <div className="space-y-3">
               <div className="space-y-1.5">
+                <label className="px-1 text-xs font-medium text-slate-500">Durasi</label>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {durationFilterOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => onDurationFilterChange(option.value)}
+                      className={cn(
+                        'rounded-xl px-3 py-2 text-xs font-semibold transition-colors sm:text-sm',
+                        filters.duration === option.value
+                          ? 'bg-slate-950 text-white'
+                          : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
                 <label className="px-1 text-xs font-medium text-slate-500">Kategori</label>
                 <select
                   value={filters.category}
@@ -109,30 +142,34 @@ function TransactionFilterPanel({
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="px-1 text-xs font-medium text-slate-500">Dari Tanggal</label>
-                  <input
-                    type="date"
-                    value={filters.startDate}
-                    onChange={(event) => onStartDateFilterChange(event.target.value)}
-                    className="w-full rounded-xl border-none bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="px-1 text-xs font-medium text-slate-500">Sampai Tanggal</label>
-                  <input
-                    type="date"
-                    value={filters.endDate}
-                    onChange={(event) => onEndDateFilterChange(event.target.value)}
-                    disabled={!filters.startDate}
-                    min={filters.startDate}
-                    className="w-full rounded-xl border-none bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
-                  />
-                </div>
-              </div>
-              {!filters.startDate && (
-                <p className="px-1 text-[10px] italic text-slate-400">* Pilih 'Dari Tanggal' terlebih dahulu untuk mengatur 'Sampai Tanggal'.</p>
+              {canEditDateRange && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="px-1 text-xs font-medium text-slate-500">Dari Tanggal</label>
+                      <input
+                        type="date"
+                        value={filters.startDate}
+                        onChange={(event) => onStartDateFilterChange(event.target.value)}
+                        className="w-full rounded-xl border-none bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="px-1 text-xs font-medium text-slate-500">Sampai Tanggal</label>
+                      <input
+                        type="date"
+                        value={filters.endDate}
+                        onChange={(event) => onEndDateFilterChange(event.target.value)}
+                        disabled={!filters.startDate}
+                        min={filters.startDate}
+                        className="w-full rounded-xl border-none bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+                      />
+                    </div>
+                  </div>
+                  {!filters.startDate && (
+                    <p className="px-1 text-[10px] italic text-slate-400">* Pilih 'Dari Tanggal' terlebih dahulu untuk mengatur 'Sampai Tanggal'.</p>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -374,6 +411,7 @@ export function TransactionListView(props: TransactionListViewProps) {
       <TransactionFilterPanel
         filters={props.filters}
         uniqueCategories={props.uniqueCategories}
+        onDurationFilterChange={props.onDurationFilterChange}
         onCategoryFilterChange={props.onCategoryFilterChange}
         onStartDateFilterChange={props.onStartDateFilterChange}
         onEndDateFilterChange={props.onEndDateFilterChange}
