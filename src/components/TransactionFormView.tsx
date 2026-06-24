@@ -1,5 +1,9 @@
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertCircle, ArrowDownRight, ArrowUpRight, Camera, Check, ChevronDown, ChevronUp, Edit2, Loader2, Mic, Plus, Search, Trash2, Upload, X } from 'lucide-react';
+import { AlertCircle, ArrowDownRight, ArrowUpRight, Camera, Calendar, Check, ChevronDown, ChevronUp, Edit2, Loader2, Mic, Plus, Search, Trash2, Upload, X } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { id } from 'date-fns/locale';
+import { DayPicker } from 'react-day-picker';
 import { cn } from '../lib/utils';
 import type { CategoryRecord, TransactionType } from './financeTypes';
 
@@ -231,50 +235,104 @@ function BasicInputSection({
   onNoteChange,
   onDateChange,
 }: Pick<TransactionFormViewProps, 'amountStr' | 'note' | 'date' | 'onAmountChange' | 'onQuickAmountAdd' | 'onAppendZeros' | 'onNoteChange' | 'onDateChange'>) {
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [draftDate, setDraftDate] = useState<Date | undefined>();
+  const selectedDate = date ? parseISO(date) : undefined;
+  const dateLabel = date ? format(selectedDate ?? parseISO(date), 'd MMM yyyy', { locale: id }) : 'Pilih tanggal';
+
+  const openDatePicker = () => {
+    setDraftDate(selectedDate);
+    setIsDatePickerOpen(true);
+  };
+
+  const applyDate = (nextDate: Date | undefined) => {
+    if (!nextDate) {
+      return;
+    }
+
+    onDateChange(format(nextDate, 'yyyy-MM-dd'));
+    setIsDatePickerOpen(false);
+  };
+
   return (
     <>
       <div className="space-y-1.5">
-        <label className="px-1 text-sm font-medium text-slate-600">Jumlah</label>
-        <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 font-medium text-slate-400">Rp</span>
-          <input
-            type="tel"
-            required
-            value={amountStr}
-            onChange={(event) => onAmountChange(event.target.value)}
-            className="w-full rounded-2xl border-none bg-slate-50 py-4 pl-12 pr-4 text-lg font-semibold text-slate-900 transition-shadow focus:ring-2 focus:ring-slate-900"
-            placeholder="0"
-          />
-        </div>
-        <div className="mt-2 flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
-          <button type="button" onClick={() => onQuickAmountAdd(10000)} className="whitespace-nowrap rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-600 transition-all hover:bg-slate-200 active:scale-95">+10rb</button>
-          <button type="button" onClick={() => onQuickAmountAdd(50000)} className="whitespace-nowrap rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-600 transition-all hover:bg-slate-200 active:scale-95">+50rb</button>
-          <button type="button" onClick={() => onQuickAmountAdd(100000)} className="whitespace-nowrap rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-600 transition-all hover:bg-slate-200 active:scale-95">+100rb</button>
-          <button type="button" onClick={onAppendZeros} className="whitespace-nowrap rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-600 transition-all hover:bg-slate-200 active:scale-95">+000</button>
-        </div>
+        <label className="px-1 text-sm font-medium text-slate-600">Tanggal</label>
+        <button
+          type="button"
+          onClick={openDatePicker}
+          className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-left text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white"
+        >
+          <span className="truncate">{dateLabel}</span>
+          <Calendar className="h-4 w-4 shrink-0 text-slate-400" />
+        </button>
       </div>
 
-      <div className="space-y-1.5">
-        <label className="px-1 text-sm font-medium text-slate-600">Catatan (Opsional)</label>
-        <input
-          type="text"
-          value={note}
-          onChange={(event) => onNoteChange(event.target.value)}
-          className="w-full rounded-2xl border-none bg-slate-50 px-4 py-4 text-slate-900 transition-shadow focus:ring-2 focus:ring-slate-900"
-          placeholder="Tambah catatan..."
-        />
-      </div>
+      <AnimatePresence>
+        {isDatePickerOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/40 px-3 pb-3 backdrop-blur-sm sm:items-center sm:p-4"
+            onClick={() => setIsDatePickerOpen(false)}
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 240 }}
+              className="w-full max-w-md overflow-hidden rounded-[28px] bg-white shadow-2xl sm:rounded-3xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Tanggal transaksi</p>
+                  <h3 className="text-lg font-bold text-slate-950">Pilih tanggal</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsDatePickerOpen(false)}
+                  className="rounded-full bg-slate-100 p-2 text-slate-500 transition hover:bg-slate-200"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
 
-      <div className="space-y-1.5">
-        <label className="px-1 text-sm font-medium text-slate-600">Tanggal & jam</label>
-        <input
-          type="datetime-local"
-          required
-          value={date}
-          onChange={(event) => onDateChange(event.target.value)}
-          className="w-full rounded-2xl border-none bg-slate-50 px-4 py-4 text-slate-900 transition-shadow focus:ring-2 focus:ring-slate-900"
-        />
-      </div>
+              <div className="space-y-4 p-4">
+                <div className="rounded-3xl border border-slate-100 p-2">
+                  <DayPicker
+                    mode="single"
+                    selected={draftDate ?? selectedDate}
+                    onSelect={setDraftDate}
+                    locale={id}
+                    captionLayout="dropdown"
+                    className="finance-date-picker"
+                    disabled={{ after: new Date() }}
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsDatePickerOpen(false)}
+                    className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-200"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyDate(draftDate ?? selectedDate)}
+                    className="flex-1 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-200/70 transition hover:bg-slate-800"
+                  >
+                    Terapkan
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

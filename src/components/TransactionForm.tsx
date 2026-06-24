@@ -61,11 +61,9 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   Pemberian: ['dikasih', 'pemberian', 'hadiah', 'angpao'],
 };
 
-function toDateTimeLocalValue(value: string | undefined) {
+function toDateValue(value: string | undefined) {
   const source = value ? new Date(value) : new Date();
-  const timezoneOffset = source.getTimezoneOffset();
-  const localDate = new Date(source.getTime() - timezoneOffset * 60_000);
-  return localDate.toISOString().slice(0, 16);
+  return source.toISOString().slice(0, 10);
 }
 
 export function TransactionForm({ householdId, onClose, initialData }: TransactionFormProps) {
@@ -73,7 +71,7 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
   const [amountStr, setAmountStr] = useState(initialData?.amount ? new Intl.NumberFormat('id-ID').format(initialData.amount) : '');
   const [category, setCategory] = useState(initialData?.category || '');
   const [note, setNote] = useState(initialData?.note || '');
-  const [date, setDate] = useState(() => toDateTimeLocalValue(initialData?.date));
+  const [date, setDate] = useState(() => toDateValue(initialData?.date));
   const [isListening, setIsListening] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [receiptImage, setReceiptImage] = useState<string | null>(initialData?.receiptImage || null);
@@ -483,7 +481,7 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
             amount: numericAmount,
             category,
             note,
-            date: new Date(date).toISOString(),
+            date: new Date(date).toISOString().slice(0, 10),
             ...(receiptImage ? { receiptImage } : { receiptImage: deleteField() }),
           });
         } catch (error) {
@@ -498,7 +496,7 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
             amount: numericAmount,
             category,
             note,
-            date: new Date(date).toISOString(),
+            date: new Date(date).toISOString().slice(0, 10),
             createdAt: new Date().toISOString(),
             authorUid: auth.currentUser.uid,
             authorName: auth.currentUser.displayName || auth.currentUser.email || '',
