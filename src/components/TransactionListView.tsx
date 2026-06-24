@@ -35,7 +35,7 @@ interface TransactionFilters {
 const durationFilterOptions: Array<{ value: TransactionDurationFilter; label: string }> = [
   { value: 'today', label: 'Hari ini' },
   { value: 'yesterday', label: 'Kemarin' },
-  { value: 'last7days', label: '7 hari lalu' },
+  { value: 'last7days', label: '7 Hari' },
   { value: 'all', label: 'Semua' },
 ];
 
@@ -112,14 +112,6 @@ function TransactionFilterPanel({ filters, uniqueCategories, onDurationFilterCha
     <AnimatePresence>
       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
         <div className="mb-5 space-y-4 rounded-[26px] border border-slate-100 bg-white p-4 shadow-sm shadow-slate-200/50">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {durationFilterOptions.map((option) => (
-              <button key={option.value} onClick={() => onDurationFilterChange(option.value)} className={cn('rounded-2xl px-3 py-2 text-xs font-semibold transition-colors', filters.duration === option.value ? 'bg-slate-950 text-white shadow-lg shadow-slate-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200')}>
-                {option.label}
-              </button>
-            ))}
-          </div>
-
           <div className="grid gap-3 sm:grid-cols-[1fr_1.2fr_auto]">
             <label className="space-y-1.5">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Kategori</span>
@@ -137,7 +129,7 @@ function TransactionFilterPanel({ filters, uniqueCategories, onDurationFilterCha
               </button>
             </div>
 
-            <button type="button" disabled={!hasActiveFilters && filters.duration === 'last7days'} onClick={onResetFilters} className="self-end rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-500 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="button" disabled={!hasActiveFilters && filters.duration === 'today'} onClick={onResetFilters} className="self-end rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-500 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50">
               Reset
             </button>
           </div>
@@ -209,7 +201,7 @@ function TransactionRow({
 }) {
   return (
     <div
-      className={cn('flex cursor-pointer items-center justify-between py-3 transition-colors hover:bg-slate-50/70 sm:py-4', !isLast && 'border-b border-slate-100')}
+      className={cn('flex cursor-pointer items-center justify-between -mx-4 px-4 py-4 transition-colors hover:bg-slate-50/70 sm:py-5', !isLast && 'border-b border-[#E8E8E8]')}
       onClick={() => onViewDetail(item)}
     >
       <div className="flex items-center gap-3 overflow-hidden sm:gap-4">
@@ -217,22 +209,22 @@ function TransactionRow({
           {item.type === 'income' ? <ArrowDownRight className="h-4 w-4 sm:h-5 sm:w-5" /> : <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5" />}
         </div>
         <div className="min-w-0 flex-col justify-center">
-          <p className="truncate text-sm font-medium leading-tight text-slate-900 sm:text-base">{item.category}</p>
+          <p className="text-sm font-medium leading-tight text-slate-900 sm:text-base">{item.category}</p>
           {item.note && (
-            <p className="mt-1 flex items-center gap-1 truncate text-[10px] text-slate-500 sm:text-xs">
-              <Tag className="h-2.5 w-2.5 shrink-0 sm:h-3 sm:w-3" />
-              <span className="truncate">{item.note}</span>
+            <p className="mt-1 flex items-center gap-1 text-[11px] text-[#A9A9A9]">
+              <Tag className="h-2.5 w-2.5 shrink-0" />
+              <span>{item.note}</span>
             </p>
           )}
-          <p className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-slate-400 sm:text-xs">
+          <p className="mt-0.5 flex items-center gap-1 text-[10px] text-slate-400 sm:text-xs">
             <User className="h-2.5 w-2.5 shrink-0 sm:h-3 sm:w-3" />
-            <span className="truncate">{item.authorName && item.authorName !== 'Unknown' ? item.authorName : '-'}</span>
+            <span>{item.authorName && item.authorName !== 'Unknown' ? item.authorName : '-'}</span>
           </p>
         </div>
       </div>
       <div className="ml-4 flex items-center gap-2 sm:gap-4" onClick={(event) => event.stopPropagation()}>
         <div className={cn('whitespace-nowrap text-sm font-semibold sm:text-base', item.type === 'income' ? 'text-emerald-600' : 'text-slate-900')}>
-          {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)}
+          {item.type === 'income' ? '+' : ''}{formatCurrency(item.amount)}
         </div>
         <div className="flex items-center gap-0.5 sm:gap-1">
           {item.receiptImage && (
@@ -391,21 +383,51 @@ export function TransactionListView(props: TransactionListViewProps) {
 
   return (
     <div className="space-y-6 pb-24">
-      <div className="flex items-start justify-between gap-4">
+      <div>
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-500">Riwayat</p>
           <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Transaksi</h2>
           <p className="mt-1 text-sm font-medium text-slate-500">Semua arus masuk dan keluar rumah tangga.</p>
         </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <div className="relative min-w-0 flex-1">
+          <div className="overflow-x-auto overflow-y-hidden">
+            <div className="flex min-w-max items-center gap-2 pr-10">
+              {durationFilterOptions.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => props.onDurationFilterChange(option.value)}
+                  className={cn(
+                    'inline-flex h-10 items-center justify-center whitespace-nowrap rounded-full px-4 text-sm font-semibold transition-colors',
+                    props.filters.duration === option.value
+                      ? 'bg-[#1A1A1A] text-white'
+                      : 'bg-[#F8F9FB] text-[#606266] hover:bg-[#eef1f5]'
+                  )}
+                >
+                  <span className="whitespace-nowrap">{option.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 right-0 w-12"
+            style={{ background: 'linear-gradient(90deg, #FFFFFF00 0%, #FFFFFF 100%)' }}
+          />
+        </div>
+
         <button
           onClick={props.onToggleFilters}
+          aria-label="Buka filter"
           className={cn(
-            'flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold transition-colors',
-            props.filters.showFilters || hasActiveFilters ? 'bg-slate-950 text-white' : 'bg-white text-slate-600 shadow-sm shadow-slate-200/70 hover:bg-slate-50'
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-[#1A1A1A] transition-colors hover:bg-slate-50',
+            props.filters.showFilters || hasActiveFilters ? 'border-[#1A1A1A]' : ''
           )}
         >
           <Filter className="h-4 w-4" />
-          <span className="hidden sm:inline">Filter</span>
         </button>
       </div>
 

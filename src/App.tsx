@@ -312,6 +312,7 @@ export default function App() {
       {isFormOpen && (
         <TransactionForm 
           householdId={householdId} 
+          onNotify={setAlertMessage}
           onClose={() => {
             setIsFormOpen(false);
             setEditingTransaction(null);

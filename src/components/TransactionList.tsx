@@ -24,9 +24,22 @@ function getDurationDateRange(duration: Exclude<TransactionDurationFilter, 'all'
   }
 
   return {
-    startDate: format(subDays(today, 7), 'yyyy-MM-dd'),
+    startDate: format(subDays(today, 6), 'yyyy-MM-dd'),
     endDate: format(today, 'yyyy-MM-dd'),
   };
+}
+
+function getDateTimeBounds(startDate: string, endDate: string) {
+  return {
+    startDateTime: startDate ? `${startDate}T00:00:00` : '',
+    endDateTime: endDate ? `${endDate}T23:59:59` : '',
+  };
+}
+
+function normalizeTransactionDateTime(value: string) {
+  if (!value) return '';
+  if (value.includes('T')) return value;
+  return `${value}T00:00:00`;
 }
 
 export function TransactionList({ householdId, refreshKey, onEdit }: { householdId: string; refreshKey: number; onEdit: (transaction: TransactionRecord) => void }) {
@@ -56,11 +69,11 @@ export function TransactionList({ householdId, refreshKey, onEdit }: { household
       const constraints: QueryConstraint[] = [];
 
       if (filterStartDate) {
-        constraints.push(where('date', '>=', `${filterStartDate}T00:00:00.000Z`));
+        constraints.push(where('date', '>=', filterStartDate));
       }
 
       if (filterEndDate) {
-        constraints.push(where('date', '<=', `${filterEndDate}T23:59:59.999Z`));
+        constraints.push(where('date', '<=', `${filterEndDate}\uf8ff`));
       }
 
       constraints.push(orderBy('date', 'desc'));
@@ -154,6 +167,7 @@ export function TransactionList({ householdId, refreshKey, onEdit }: { household
 
   const viewModel = useMemo(() => {
     const transactionItems = transactions ?? [];
+    const { startDateTime, endDateTime } = getDateTimeBounds(filterStartDate, filterEndDate);
 
     const uniqueCategories = Array.from(
       new Set([...transactionItems.map((transaction) => transaction.category), ...customCategories])
@@ -164,12 +178,13 @@ export function TransactionList({ householdId, refreshKey, onEdit }: { household
         return false;
       }
 
-      const dateOnly = transaction.date.split('T')[0];
-      if (filterStartDate && dateOnly < filterStartDate) {
+      const transactionDateTime = normalizeTransactionDateTime(transaction.date);
+
+      if (startDateTime && transactionDateTime < startDateTime) {
         return false;
       }
 
-      if (filterEndDate && dateOnly > filterEndDate) {
+      if (endDateTime && transactionDateTime > endDateTime) {
         return false;
       }
 

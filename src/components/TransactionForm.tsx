@@ -30,6 +30,7 @@ declare global {
 interface TransactionFormProps {
   householdId: string;
   onClose: () => void;
+  onNotify: (payload: { title: string; message: string }) => void;
   initialData?: TransactionRecord;
 }
 
@@ -63,10 +64,13 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
 
 function toDateValue(value: string | undefined) {
   const source = value ? new Date(value) : new Date();
-  return source.toISOString().slice(0, 10);
+  const year = source.getFullYear();
+  const month = String(source.getMonth() + 1).padStart(2, '0');
+  const day = String(source.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
-export function TransactionForm({ householdId, onClose, initialData }: TransactionFormProps) {
+export function TransactionForm({ householdId, onClose, onNotify, initialData }: TransactionFormProps) {
   const [type, setType] = useState<TransactionType>(initialData?.type || 'expense');
   const [amountStr, setAmountStr] = useState(initialData?.amount ? new Intl.NumberFormat('id-ID').format(initialData.amount) : '');
   const [category, setCategory] = useState(initialData?.category || '');
@@ -83,6 +87,7 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
   const [isScanSourcePickerOpen, setIsScanSourcePickerOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<CategoryRecord | null>(null);
+  const [pendingDeleteCategory, setPendingDeleteCategory] = useState<CategoryRecord | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [isSavingCategory, setIsSavingCategory] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -136,7 +141,7 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
   const categoryObjects = [
     ...defaultCategories.map((name) => ({ id: name, name, isCustom: false })),
     ...currentCustomCategories.map((item) => ({ id: item.id, name: item.name, isCustom: true, record: item })),
-  ];
+  ].filter((item) => item.name.trim().length > 0);
   const categoryUsage = transactions.reduce<Record<string, number>>((accumulator, transaction) => {
     if (transaction.type !== type) return accumulator;
     accumulator[transaction.category] = (accumulator[transaction.category] ?? 0) + 1;
@@ -147,16 +152,6 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
     if (countDiff !== 0) return countDiff;
     return left.name.localeCompare(right.name);
   });
-  const featuredCategoryObjects = Array.from(
-    new Map(
-      [
-        ...(category ? sortedCategoryObjects.filter((item) => item.name === category) : []),
-        ...sortedCategoryObjects,
-        ...(category ? categoryObjects.filter((item) => item.name === category) : []),
-      ].map((item) => [item.id, item])
-    ).values()
-  ).slice(0, 8);
-
   useEffect(() => {
     setSearchCategory('');
     setShowAllCategories(false);
@@ -204,7 +199,10 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
       setNewCategoryName('');
     } catch (error) {
       console.error('Failed to save category', error);
-      alert('Gagal menyimpan kategori.');
+      onNotify({
+        title: 'Gagal Menyimpan Kategori',
+        message: 'Kategori tidak berhasil disimpan. Coba lagi beberapa saat lagi.',
+      });
     } finally {
       setIsSavingCategory(false);
     }
@@ -217,18 +215,41 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
       const snapshot = await getDocs(transactionQuery);
 
       if (!snapshot.empty) {
-        alert(`Kategori "${categoryToDelete.name}" tidak bisa dihapus karena sudah digunakan pada transaksi.`);
+        onNotify({
+          title: 'Kategori Tidak Bisa Dihapus',
+          message: `Kategori "${categoryToDelete.name}" sudah dipakai di transaksi dan belum bisa dihapus.`,
+        });
         return;
       }
 
-      if (confirm(`Hapus kategori "${categoryToDelete.name}"?`)) {
-        const path = `households/${householdId}/categories/${categoryToDelete.id}`;
-        await deleteDoc(doc(db, path));
-        if (category === categoryToDelete.name) setCategory('');
-      }
+      setPendingDeleteCategory(categoryToDelete);
     } catch (error) {
       console.error('Failed to delete category', error);
-      alert('Gagal menghapus kategori.');
+      onNotify({
+        title: 'Gagal Menghapus Kategori',
+        message: 'Kategori tidak berhasil dihapus. Coba lagi beberapa saat lagi.',
+      });
+    }
+  };
+
+  const confirmDeleteCategory = async () => {
+    if (!pendingDeleteCategory) return;
+
+    try {
+      const path = `households/${householdId}/categories/${pendingDeleteCategory.id}`;
+      await deleteDoc(doc(db, path));
+      if (category === pendingDeleteCategory.name) setCategory('');
+      setPendingDeleteCategory(null);
+      onNotify({
+        title: 'Kategori Dihapus',
+        message: `Kategori "${pendingDeleteCategory.name}" berhasil dihapus.`,
+      });
+    } catch (error) {
+      console.error('Failed to confirm delete category', error);
+      onNotify({
+        title: 'Gagal Menghapus Kategori',
+        message: 'Kategori tidak berhasil dihapus. Coba lagi beberapa saat lagi.',
+      });
     }
   };
 
@@ -320,13 +341,19 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
     if (typeof window === 'undefined') return;
 
     if (!navigator.onLine) {
-      alert('Anda sedang offline. Fitur Voice Input membutuhkan koneksi internet untuk memproses suara.');
+      onNotify({
+        title: 'Tidak Ada Koneksi',
+        message: 'Voice input membutuhkan koneksi internet untuk memproses suara.',
+      });
       return;
     }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert('Browser Anda tidak mendukung Voice Input.');
+      onNotify({
+        title: 'Voice Input Tidak Didukung',
+        message: 'Browser ini belum mendukung voice input.',
+      });
       return;
     }
 
@@ -344,11 +371,20 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
       setIsListening(false);
 
       if (event.error === 'not-allowed') {
-        alert('Izin mikrofon ditolak. Pastikan Anda memberikan izin akses mikrofon di browser atau buka aplikasi di tab baru jika masih bermasalah.');
+        onNotify({
+          title: 'Izin Mikrofon Ditolak',
+          message: 'Berikan izin mikrofon di browser atau buka aplikasi di tab baru lalu coba lagi.',
+        });
       } else if (event.error === 'network') {
-        alert('Gagal terhubung ke layanan pengenal suara (Network Error). \n\nHal ini biasanya terjadi karena:\n1. Koneksi internet tidak stabil.\n2. Layanan pengenalan suara Google sedang sibuk atau diblokir oleh jaringan Anda.\n\nSilakan coba lagi dalam beberapa saat atau gunakan input manual.');
+        onNotify({
+          title: 'Voice Input Gagal',
+          message: 'Koneksi internet tidak stabil atau layanan pengenal suara sedang tidak tersedia.',
+        });
       } else if (event.error !== 'no-speech') {
-        alert(`Terjadi kesalahan pada Voice Input: ${event.error}`);
+        onNotify({
+          title: 'Voice Input Bermasalah',
+          message: `Terjadi kesalahan saat memproses suara: ${event.error}.`,
+        });
       }
     };
     recognition.onresult = (event: any) => processVoiceInput(event.results[0][0].transcript);
@@ -386,7 +422,10 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
     if (!file) return;
 
     if (!auth.currentUser) {
-      alert('Anda harus login terlebih dahulu untuk memakai scan struk.');
+      onNotify({
+        title: 'Login Diperlukan',
+        message: 'Anda harus login terlebih dahulu untuk memakai scan struk.',
+      });
       return;
     }
 
@@ -457,7 +496,10 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
     } catch (error) {
       console.error('Error scanning receipt:', error);
       const message = error instanceof Error ? error.message : 'Gagal memindai struk. Pastikan gambar jelas dan coba lagi.';
-      alert(message);
+      onNotify({
+        title: 'Scan Struk Gagal',
+        message,
+      });
       setReceiptScanState('error');
     } finally {
       setIsScanning(false);
@@ -475,40 +517,46 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
     try {
       if (initialData?.id) {
         const path = `households/${householdId}/transactions/${initialData.id}`;
-        try {
-          await updateDoc(doc(db, path), {
-            type,
-            amount: numericAmount,
-            category,
-            note,
-            date: new Date(date).toISOString().slice(0, 10),
-            ...(receiptImage ? { receiptImage } : { receiptImage: deleteField() }),
-          });
-        } catch (error) {
-          handleFirestoreError(error, OperationType.UPDATE, path);
-        }
+        await updateDoc(doc(db, path), {
+          type,
+          amount: numericAmount,
+          category,
+          note,
+          date: toDateValue(date),
+          ...(receiptImage ? { receiptImage } : { receiptImage: deleteField() }),
+        });
       } else {
         const path = `households/${householdId}/transactions`;
-        try {
-          await addDoc(collection(db, path), {
-            householdId,
-            type,
-            amount: numericAmount,
-            category,
-            note,
-            date: new Date(date).toISOString().slice(0, 10),
-            createdAt: new Date().toISOString(),
-            authorUid: auth.currentUser.uid,
-            authorName: auth.currentUser.displayName || auth.currentUser.email || '',
-            ...(receiptImage && { receiptImage }),
-          });
-        } catch (error) {
-          handleFirestoreError(error, OperationType.CREATE, path);
-        }
+        await addDoc(collection(db, path), {
+          householdId,
+          type,
+          amount: numericAmount,
+          category,
+          note,
+          date: toDateValue(date),
+          createdAt: new Date().toISOString(),
+          authorUid: auth.currentUser.uid,
+          authorName: auth.currentUser.displayName || auth.currentUser.email || '',
+          ...(receiptImage && { receiptImage }),
+        });
       }
+
+      onNotify({
+        title: initialData?.id ? 'Transaksi Diperbarui' : 'Transaksi Dibuat',
+        message: initialData?.id ? 'Perubahan transaksi berhasil disimpan.' : 'Transaksi baru berhasil disimpan.',
+      });
       onClose();
     } catch (error) {
       console.error('Failed to save transaction:', error);
+      try {
+        handleFirestoreError(error, initialData?.id ? OperationType.UPDATE : OperationType.CREATE, initialData?.id ? `households/${householdId}/transactions/${initialData.id}` : `households/${householdId}/transactions`);
+      } catch (handledError) {
+        console.error('Transaction save error detail:', handledError);
+      }
+      onNotify({
+        title: initialData?.id ? 'Gagal Memperbarui Transaksi' : 'Gagal Membuat Transaksi',
+        message: 'Data transaksi tidak berhasil disimpan. Cek isian dan coba lagi.',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -529,7 +577,7 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
       isScanSourcePickerOpen={isScanSourcePickerOpen}
       isSubmitting={isSubmitting}
       categoryObjects={categoryObjects}
-      featuredCategoryObjects={featuredCategoryObjects}
+      featuredCategoryObjects={categoryObjects}
       searchCategory={searchCategory}
       showAllCategories={showAllCategories}
       isCategoryModalOpen={isCategoryModalOpen}
@@ -558,6 +606,9 @@ export function TransactionForm({ householdId, onClose, initialData }: Transacti
         setIsCategoryModalOpen(true);
       }}
       onDeleteCategory={handleDeleteCategory}
+      pendingDeleteCategory={pendingDeleteCategory}
+      onCancelDeleteCategory={() => setPendingDeleteCategory(null)}
+      onConfirmDeleteCategory={confirmDeleteCategory}
       onNoteChange={setNote}
       onDateChange={setDate}
       onClearReceiptImage={() => {

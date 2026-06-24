@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertCircle, ArrowDownRight, ArrowUpRight, Camera, Calendar, Check, ChevronDown, ChevronUp, Edit2, Loader2, Mic, Plus, Search, Trash2, Upload, X } from 'lucide-react';
+import { AlertCircle, ArrowDownRight, ArrowUpRight, Camera, Calendar, Check, Edit2, Loader2, Mic, Plus, Trash2, Upload, X } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { DayPicker } from 'react-day-picker';
@@ -33,6 +33,7 @@ interface TransactionFormViewProps {
   isScanSourcePickerOpen: boolean;
   isCategoryModalOpen: boolean;
   editingCategory: CategoryRecord | null;
+  pendingDeleteCategory: CategoryRecord | null;
   newCategoryName: string;
   isSavingCategory: boolean;
   onClose: () => void;
@@ -46,6 +47,8 @@ interface TransactionFormViewProps {
   onOpenNewCategoryModal: () => void;
   onEditCategory: (category: CategoryRecord) => void;
   onDeleteCategory: (category: CategoryRecord) => void;
+  onCancelDeleteCategory: () => void;
+  onConfirmDeleteCategory: () => void;
   onNoteChange: (value: string) => void;
   onDateChange: (value: string) => void;
   onClearReceiptImage: () => void;
@@ -257,6 +260,39 @@ function BasicInputSection({
   return (
     <>
       <div className="space-y-1.5">
+        <label className="px-1 text-sm font-medium text-slate-600">Jumlah</label>
+        <div className="relative">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 font-medium text-slate-400">Rp</span>
+          <input
+            type="tel"
+            required
+            value={amountStr}
+            onChange={(event) => onAmountChange(event.target.value)}
+            className="w-full rounded-2xl border-none bg-slate-50 py-4 pl-12 pr-4 text-lg font-semibold text-slate-900 transition-shadow focus:ring-2 focus:ring-slate-900"
+            placeholder="0"
+            inputMode="numeric"
+          />
+        </div>
+        <div className="mt-2 flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
+          <button type="button" onClick={() => onQuickAmountAdd(10000)} className="whitespace-nowrap rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-600 transition-all hover:bg-slate-200 active:scale-95">+10rb</button>
+          <button type="button" onClick={() => onQuickAmountAdd(50000)} className="whitespace-nowrap rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-600 transition-all hover:bg-slate-200 active:scale-95">+50rb</button>
+          <button type="button" onClick={() => onQuickAmountAdd(100000)} className="whitespace-nowrap rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-600 transition-all hover:bg-slate-200 active:scale-95">+100rb</button>
+          <button type="button" onClick={onAppendZeros} className="whitespace-nowrap rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-600 transition-all hover:bg-slate-200 active:scale-95">+000</button>
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="px-1 text-sm font-medium text-slate-600">Catatan (Opsional)</label>
+        <input
+          type="text"
+          value={note}
+          onChange={(event) => onNoteChange(event.target.value)}
+          className="w-full rounded-2xl border-none bg-slate-50 px-4 py-4 text-slate-900 transition-shadow focus:ring-2 focus:ring-slate-900"
+          placeholder="Tambah catatan..."
+        />
+      </div>
+
+      <div className="space-y-1.5">
         <label className="px-1 text-sm font-medium text-slate-600">Tanggal</label>
         <button
           type="button"
@@ -352,50 +388,15 @@ function CategoryPicker({
   onDeleteCategory,
 }: Pick<TransactionFormViewProps, 'type' | 'category' | 'categoryObjects' | 'featuredCategoryObjects' | 'searchCategory' | 'showAllCategories' | 'onCategoryChange' | 'onSearchCategoryChange' | 'onToggleShowAllCategories' | 'onOpenNewCategoryModal' | 'onEditCategory' | 'onDeleteCategory'>) {
   const shouldShowSearch = showAllCategories || searchCategory.trim().length > 0 || categoryObjects.length > 12;
-  const normalizedSearch = searchCategory.trim().toLowerCase();
-  const visibleCategoryObjects = normalizedSearch
-    ? categoryObjects.filter((item) => item.name.toLowerCase().includes(normalizedSearch))
-    : showAllCategories
-      ? categoryObjects
-      : featuredCategoryObjects;
-  const isShowingFeaturedOnly = !showAllCategories && !normalizedSearch;
+  const visibleCategoryObjects = categoryObjects;
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3">
-        <label className="px-1 text-sm font-medium text-slate-600">Kategori</label>
-        {categoryObjects.length > featuredCategoryObjects.length && (
-          <button
-            type="button"
-            onClick={onToggleShowAllCategories}
-            className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-200"
-          >
-            {showAllCategories ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-            {showAllCategories ? 'Sembunyikan' : `Lihat semua (${categoryObjects.length})`}
-          </button>
-        )}
-      </div>
-
-      {shouldShowSearch && (
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={searchCategory}
-            onChange={(event) => onSearchCategoryChange(event.target.value)}
-            placeholder="Cari kategori..."
-            className="w-full rounded-2xl border-none bg-slate-50 py-3 pl-10 pr-4 text-sm text-slate-900 transition-shadow focus:ring-2 focus:ring-slate-900"
-          />
-        </div>
-      )}
-
-      {isShowingFeaturedOnly && featuredCategoryObjects.length > 0 && (
-        <p className="px-1 text-[11px] text-slate-500">Kategori yang paling sering dipakai ditampilkan dulu biar input lebih cepat.</p>
-      )}
+      <label className="px-1 text-sm font-medium text-slate-600">Kategori</label>
 
       <div className="grid grid-cols-3 gap-2">
-        {visibleCategoryObjects.map((categoryItem) => (
-          <div key={categoryItem.id} className="group relative">
+        {visibleCategoryObjects.map((categoryItem, index) => (
+          <div key={`${categoryItem.isCustom ? 'custom' : 'default'}-${categoryItem.id || categoryItem.name}-${index}`} className="group relative">
             <label
               className={cn(
                 'flex h-full min-h-[3rem] cursor-pointer select-none items-center justify-center rounded-xl border px-1 py-3 text-center text-xs font-medium transition-all',
@@ -484,12 +485,59 @@ function CategoryModal({
   );
 }
 
+function DeleteCategoryConfirmModal({
+  pendingDeleteCategory,
+  onCancelDeleteCategory,
+  onConfirmDeleteCategory,
+}: Pick<TransactionFormViewProps, 'pendingDeleteCategory' | 'onCancelDeleteCategory' | 'onConfirmDeleteCategory'>) {
+  return (
+    <AnimatePresence>
+      {pendingDeleteCategory && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[65] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl"
+          >
+            <h3 className="text-lg font-bold text-slate-900">Hapus Kategori?</h3>
+            <p className="mt-2 text-sm text-slate-500">
+              Kategori "{pendingDeleteCategory.name}" akan dihapus dari daftar kategori.
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={onCancelDeleteCategory}
+                className="flex-1 rounded-xl bg-slate-100 px-4 py-3 font-medium text-slate-700 transition-colors hover:bg-slate-200"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={onConfirmDeleteCategory}
+                className="flex-1 rounded-xl bg-rose-600 px-4 py-3 font-medium text-white transition-colors hover:bg-rose-700"
+              >
+                Hapus
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 export function TransactionFormView(props: TransactionFormViewProps) {
   const title = props.mode === 'edit' ? 'Edit Transaksi' : 'Transaksi Baru';
 
   return (
     <AnimatePresence>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-3 backdrop-blur-sm sm:items-center">
+      <motion.div key="transaction-form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-3 backdrop-blur-sm sm:items-center">
         <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-[2rem] bg-white shadow-2xl sm:rounded-[2rem]">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <div className="flex items-center gap-3">
@@ -573,6 +621,7 @@ export function TransactionFormView(props: TransactionFormViewProps) {
       </motion.div>
 
       <CategoryModal
+        key="category-modal"
         isCategoryModalOpen={props.isCategoryModalOpen}
         editingCategory={props.editingCategory}
         newCategoryName={props.newCategoryName}
@@ -580,6 +629,12 @@ export function TransactionFormView(props: TransactionFormViewProps) {
         onCloseCategoryModal={props.onCloseCategoryModal}
         onCategoryNameChange={props.onCategoryNameChange}
         onSubmitCategory={props.onSubmitCategory}
+      />
+
+      <DeleteCategoryConfirmModal
+        pendingDeleteCategory={props.pendingDeleteCategory}
+        onCancelDeleteCategory={props.onCancelDeleteCategory}
+        onConfirmDeleteCategory={props.onConfirmDeleteCategory}
       />
     </AnimatePresence>
   );
