@@ -65,11 +65,6 @@ export function CategoriesPage({ householdId }: CategoriesPageProps) {
 
   return (
     <div className="space-y-6 pb-10">
-      <div className="px-1">
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-500">Kategori</p>
-        <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Daftar Kategori</h2>
-        <p className="mt-1 text-sm font-medium text-slate-500">Kategori yang tersedia saat mencatat transaksi.</p>
-      </div>
 
       <div className="grid grid-cols-2 rounded-2xl bg-slate-100 p-1">
         <button

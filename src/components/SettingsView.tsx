@@ -160,11 +160,6 @@ function SettingsFooter({ onLogout }: Pick<SettingsViewProps, 'onLogout'>) {
 export function SettingsView(props: SettingsViewProps) {
   return (
     <div className="space-y-6 pb-10">
-      <div className="px-1">
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-500">Akun</p>
-        <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Pengaturan</h2>
-        <p className="mt-1 text-sm font-medium text-slate-500">Atur identitas, siklus gaji, dan akses keluarga.</p>
-      </div>
       <SettingsFormSection {...props} />
       <HouseholdShareCard householdId={props.householdId} copied={props.copied} onCopyHouseholdId={props.onCopyHouseholdId} />
       <SettingsFooter onLogout={props.onLogout} />

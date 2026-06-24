@@ -482,16 +482,7 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
 
   return (
     <section className="space-y-6 pb-10">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-amber-500">Planner</p>
-          <h3 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Belanja Bulanan</h3>
-          <p className="text-sm text-slate-500">
-            Simpan daftar belanja rumah tangga per bulan, tarik item dari transaksi dengan AI, atau salin dari bulan lalu.
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-3 sm:min-w-56">
+      <div className="flex flex-col gap-3 sm:min-w-56">
           <label className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">Bulan aktif</label>
           <input
             type="month"
@@ -525,7 +516,6 @@ export function MonthlyShoppingPlanner({ householdId }: MonthlyShoppingPlannerPr
             {syncingPreviousMonth ? 'Sedang menarik...' : `Tarik ${formatMonthLabel(previousMonthKey)}`}
           </button>
         </div>
-      </div>
 
       <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 overflow-hidden rounded-[26px] border border-slate-200/80 bg-white shadow-sm shadow-slate-200/60 md:grid-cols-4 md:divide-y-0">
         <SummaryTile label="Total item" value={`${summary.totalItems}`} tone="slate" />

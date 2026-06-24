@@ -383,13 +383,6 @@ export function TransactionListView(props: TransactionListViewProps) {
 
   return (
     <div className="space-y-6 pb-24">
-      <div>
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-500">Riwayat</p>
-          <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">Transaksi</h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">Semua arus masuk dan keluar rumah tangga.</p>
-        </div>
-      </div>
 
       <div className="flex items-center gap-3">
         <div className="relative min-w-0 flex-1">

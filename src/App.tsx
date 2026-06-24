@@ -8,7 +8,7 @@ import { Settings } from './components/Settings';
 import { MonthlyShoppingPlanner } from './components/MonthlyShoppingPlanner';
 import { CategoriesPage } from './components/CategoriesPage';
 import { auth, db, logout, onSnapshot, collection, query, orderBy, setDoc, doc, getDoc, limit } from './firebase';
-import { Plus, Activity, ListOrdered, LogOut, Download, CloudOff, PieChart, Settings as SettingsIcon, Share, PlusSquare, X, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Plus, Activity, ListOrdered, LogOut, Download, CloudOff, PieChart, Settings as SettingsIcon, Share, PlusSquare, X, MoreVertical } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { handleFirestoreError, OperationType } from './lib/firestore-errors';
@@ -189,8 +189,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#f5f7fb] text-slate-900 pb-24">
-      {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-transparent bg-[#f5f7fb]/80 px-6 py-3 backdrop-blur-xl">
+      {/* Header — only on dashboard */}
+      {activeTab === 'dashboard' && (
+      <header className="border-b border-transparent bg-[#f5f7fb]/80 px-6 py-3">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -217,6 +218,33 @@ export default function App() {
           </div>
         </div>
       </header>
+      )}
+
+      {/* Back-arrow navigation — non-dashboard pages */}
+      {(() => {
+        const titles: Record<string, string> = {
+          history: 'Riwayat Transaksi',
+          reports: 'Analisis Keuangan',
+          settings: 'Pengaturan',
+          shopping: 'Belanja Bulanan',
+          categories: 'Daftar Kategori',
+        };
+        const title = titles[activeTab];
+        if (!title) return null;
+        return (
+          <div className="border-b border-slate-200/70 bg-white/50 px-4 py-3">
+            <div className="mx-auto flex max-w-2xl items-center gap-3">
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-600 active:bg-slate-100 transition-colors -ml-1.5"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+              <h1 className="text-base font-bold tracking-tight text-slate-950">{title}</h1>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Main Content */}
       <main className="mx-auto max-w-2xl px-5 pb-8 pt-4">
