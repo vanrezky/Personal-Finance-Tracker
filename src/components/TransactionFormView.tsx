@@ -1,11 +1,32 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertCircle, ArrowDownRight, ArrowUpRight, Camera, Calendar, Check, Edit2, Loader2, Mic, Plus, Trash2, Upload, X } from 'lucide-react';
+import { AlertCircle, ArrowDownRight, ArrowUpRight, Briefcase, Bus, Camera, Calendar, Check, Droplets, Edit2, Fuel, Gamepad2, Gift, Heart, Loader2, Mic, Milk, MoreHorizontal, Package, Plus, ShoppingCart, Store, Trash2, TrendingUp, Upload, UtensilsCrossed, Wifi, Wrench, X, Zap } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { DayPicker } from 'react-day-picker';
 import { cn } from '../lib/utils';
 import type { CategoryRecord, TransactionType } from './financeTypes';
+
+const CATEGORY_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  Makan: UtensilsCrossed,
+  Jajan: Milk,
+  'Belanja Mingguan': ShoppingCart,
+  'Belanja Bulanan': Package,
+  'BBM Mobil': Fuel,
+  'BBM Motor': Fuel,
+  'Service Kendaraan': Wrench,
+  'Token Listrik': Zap,
+  'Tagihan Air': Droplets,
+  'Internet & Pulsa': Wifi,
+  Transportasi: Bus,
+  Hiburan: Gamepad2,
+  Gaji: Briefcase,
+  Bonus: Gift,
+  'Hasil Usaha': Store,
+  Investasi: TrendingUp,
+  Pemberian: Heart,
+  Lainnya: MoreHorizontal,
+};
 
 interface CategoryOption {
   id: string;
@@ -87,38 +108,38 @@ function VoiceScanActions({
   return (
     <>
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onStartListening}
-          disabled={isListening || isScanning}
-          className={cn(
-            'relative rounded-full p-2 transition-all disabled:opacity-50',
-            isListening ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-          )}
-          title="Input Suara"
-        >
-          {isListening ? (
-            <>
-              <Mic className="h-5 w-5" />
-              <span className="absolute inset-0 animate-ping rounded-full bg-rose-400 opacity-25" />
-            </>
-          ) : (
-            <Mic className="h-5 w-5" />
-          )}
-        </button>
+          <button
+            type="button"
+            onClick={onStartListening}
+            disabled={isListening || isScanning}
+            className={cn(
+              'relative rounded-full p-1.5 transition-all disabled:opacity-50',
+              isListening ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+            )}
+            title="Input Suara"
+          >
+            {isListening ? (
+              <>
+                <Mic className="h-4 w-4" />
+                <span className="absolute inset-0 animate-ping rounded-full bg-rose-400 opacity-25" />
+              </>
+            ) : (
+              <Mic className="h-4 w-4" />
+            )}
+          </button>
 
-        <button
-          type="button"
-          onClick={onOpenScanSourcePicker}
-          disabled={isListening || isScanning}
-          className={cn(
-            'relative rounded-full p-2 transition-all disabled:opacity-50',
-            isScanning ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-          )}
-          title="Scan Struk"
-        >
-          {isScanning ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
-        </button>
+          <button
+            type="button"
+            onClick={onOpenScanSourcePicker}
+            disabled={isListening || isScanning}
+            className={cn(
+              'relative rounded-full p-1.5 transition-all disabled:opacity-50',
+              isScanning ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+            )}
+            title="Scan Struk"
+          >
+            {isScanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+          </button>
         <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} onChange={onReceiptFileChange} className="hidden" />
         <input type="file" accept="image/*" ref={galleryInputRef} onChange={onReceiptFileChange} className="hidden" />
       </div>
@@ -262,14 +283,13 @@ function BasicInputSection({
       <div className="space-y-1.5">
         <label className="px-1 text-sm font-medium text-slate-600">Jumlah</label>
         <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 font-medium text-slate-400">Rp</span>
           <input
             type="tel"
             required
             value={amountStr}
             onChange={(event) => onAmountChange(event.target.value)}
-            className="w-full rounded-2xl border-none bg-slate-50 py-4 pl-12 pr-4 text-lg font-semibold text-slate-900 transition-shadow focus:ring-2 focus:ring-slate-900"
-            placeholder="0"
+            className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-4 pr-4 text-lg font-semibold text-slate-900 shadow-sm transition-[border-color,box-shadow] focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10"
+            placeholder="Rp 0"
             inputMode="numeric"
           />
         </div>
@@ -277,7 +297,7 @@ function BasicInputSection({
           <button type="button" onClick={() => onQuickAmountAdd(10000)} className="whitespace-nowrap rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-600 transition-all hover:bg-slate-200 active:scale-95">+10rb</button>
           <button type="button" onClick={() => onQuickAmountAdd(50000)} className="whitespace-nowrap rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-600 transition-all hover:bg-slate-200 active:scale-95">+50rb</button>
           <button type="button" onClick={() => onQuickAmountAdd(100000)} className="whitespace-nowrap rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-600 transition-all hover:bg-slate-200 active:scale-95">+100rb</button>
-          <button type="button" onClick={onAppendZeros} className="whitespace-nowrap rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-600 transition-all hover:bg-slate-200 active:scale-95">+000</button>
+          <button type="button" onClick={onAppendZeros} className="whitespace-nowrap rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-500 transition-all hover:bg-slate-200 active:scale-95">,000</button>
         </div>
       </div>
 
@@ -287,7 +307,7 @@ function BasicInputSection({
           type="text"
           value={note}
           onChange={(event) => onNoteChange(event.target.value)}
-          className="w-full rounded-2xl border-none bg-slate-50 px-4 py-4 text-slate-900 transition-shadow focus:ring-2 focus:ring-slate-900"
+          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm transition-[border-color,box-shadow] focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10"
           placeholder="Tambah catatan..."
         />
       </div>
@@ -297,7 +317,7 @@ function BasicInputSection({
         <button
           type="button"
           onClick={openDatePicker}
-          className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-left text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white"
+          className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white"
         >
           <span className="truncate">{dateLabel}</span>
           <Calendar className="h-4 w-4 shrink-0 text-slate-400" />
@@ -390,16 +410,22 @@ function CategoryPicker({
   const shouldShowSearch = showAllCategories || searchCategory.trim().length > 0 || categoryObjects.length > 12;
   const visibleCategoryObjects = categoryObjects;
 
+  const CategoryIcon = ({ name }: { name: string }) => {
+    const IconComponent = CATEGORY_ICON_MAP[name];
+    if (!IconComponent) return <MoreHorizontal className="h-4 w-4" />;
+    return <IconComponent className="h-4 w-4" />;
+  };
+
   return (
     <div className="space-y-2">
       <label className="px-1 text-sm font-medium text-slate-600">Kategori</label>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         {visibleCategoryObjects.map((categoryItem, index) => (
           <div key={`${categoryItem.isCustom ? 'custom' : 'default'}-${categoryItem.id || categoryItem.name}-${index}`} className="group relative">
             <label
               className={cn(
-                'flex h-full min-h-[3rem] cursor-pointer select-none items-center justify-center rounded-xl border px-1 py-3 text-center text-xs font-medium transition-all',
+                'flex min-h-[7rem] cursor-pointer select-none flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-3 text-center text-[11px] font-medium transition-all',
                 category === categoryItem.name
                   ? type === 'income'
                     ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
@@ -416,10 +442,11 @@ function CategoryPicker({
                 className="hidden"
                 required
               />
-              <span className="line-clamp-2 flex-1 px-1">{categoryItem.name}</span>
+              <CategoryIcon name={categoryItem.name} />
+              <span className="line-clamp-2 w-full break-words px-0.5 leading-tight">{categoryItem.name}</span>
             </label>
             {categoryItem.isCustom && (
-              <div className="absolute -right-2 -top-2 z-10 hidden gap-1 group-hover:flex">
+              <div className="absolute -right-1.5 -top-1.5 z-10 flex gap-0.5 sm:pointer-events-none sm:opacity-0 sm:transition-opacity sm:group-hover:pointer-events-auto sm:group-hover:opacity-100">
                 <button type="button" onClick={(event) => { event.preventDefault(); event.stopPropagation(); if (categoryItem.record) onEditCategory(categoryItem.record); }} className="rounded-full bg-blue-100 p-1.5 text-blue-600 shadow-sm transition-colors hover:bg-blue-200">
                   <Edit2 className="h-3 w-3" />
                 </button>
@@ -431,12 +458,12 @@ function CategoryPicker({
           </div>
         ))}
         {visibleCategoryObjects.length === 0 && (
-          <div className="col-span-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+          <div className="col-span-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
             Kategori tidak ditemukan.
           </div>
         )}
-        <button type="button" onClick={onOpenNewCategoryModal} className="flex h-full min-h-[3rem] select-none items-center justify-center gap-1 rounded-xl border border-dashed border-slate-300 px-1 py-3 text-center text-xs font-medium text-slate-500 transition-all hover:bg-slate-50 hover:text-slate-700">
-          <Plus className="h-3.5 w-3.5" /> Tambah
+        <button type="button" onClick={onOpenNewCategoryModal} className="flex min-h-[7rem] select-none flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 px-2 py-3 text-center text-[11px] font-medium text-slate-500 transition-all hover:bg-slate-50 hover:text-slate-700">
+          <Plus className="h-3 w-3" /> Tambah
         </button>
       </div>
     </div>
@@ -538,12 +565,12 @@ export function TransactionFormView(props: TransactionFormViewProps) {
   return (
     <AnimatePresence>
       <motion.div key="transaction-form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-3 backdrop-blur-sm sm:items-center">
-        <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-[2rem] bg-white shadow-2xl sm:rounded-[2rem]">
+        <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-[2rem] bg-[#f8f9fb] shadow-2xl sm:rounded-[2rem]">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <div className="flex items-center gap-3">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-500">Moni</p>
-                <h2 className="text-xl font-bold tracking-tight text-slate-950">{title}</h2>
+                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-blue-500">MONI</p>
+                <h2 className="text-lg font-bold tracking-tight text-slate-950">{title}</h2>
               </div>
               <VoiceScanActions
                 mode={props.mode}
@@ -560,19 +587,19 @@ export function TransactionFormView(props: TransactionFormViewProps) {
                 galleryInputRef={props.galleryInputRef}
               />
             </div>
-            <button onClick={props.onClose} className="rounded-full bg-slate-100 p-2 transition-colors hover:bg-slate-200">
-              <X className="h-5 w-5 text-slate-500" />
+            <button onClick={props.onClose} className="rounded-full p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600">
+              <X className="h-4 w-4" />
             </button>
           </div>
 
           <form onSubmit={props.onSubmit} className="space-y-6 overflow-y-auto px-5 py-5">
             <div className="relative flex rounded-2xl bg-slate-100 p-1">
-              <div className={cn('absolute inset-y-1 w-[calc(50%-4px)] rounded-xl bg-white shadow-sm transition-all duration-300 ease-in-out', props.type === 'income' ? 'left-1' : 'left-[calc(50%+2px)]')} />
-              <button type="button" onClick={() => props.onTypeChange('income')} className={cn('z-10 flex flex-1 items-center justify-center gap-2 py-3 text-sm font-medium transition-colors', props.type === 'income' ? 'text-emerald-600' : 'text-slate-500 hover:text-slate-700')}>
+              <div className={cn('absolute inset-y-1 w-[calc(50%-4px)] rounded-xl bg-white shadow-md transition-all duration-300 ease-in-out', props.type === 'income' ? 'left-1' : 'left-[calc(50%+2px)]')} />
+              <button type="button" onClick={() => props.onTypeChange('income')} className={cn('z-10 flex flex-1 items-center justify-center gap-2 py-3 text-sm font-normal transition-colors', props.type === 'income' ? 'text-emerald-600' : 'text-slate-600 hover:text-slate-800')}>
                 <ArrowDownRight className="h-4 w-4" />
                 <span>Pemasukan</span>
               </button>
-              <button type="button" onClick={() => props.onTypeChange('expense')} className={cn('z-10 flex flex-1 items-center justify-center gap-2 py-3 text-sm font-medium transition-colors', props.type === 'expense' ? 'text-rose-600' : 'text-slate-500 hover:text-slate-700')}>
+              <button type="button" onClick={() => props.onTypeChange('expense')} className={cn('z-10 flex flex-1 items-center justify-center gap-2 py-3 text-sm font-normal transition-colors', props.type === 'expense' ? 'text-rose-600' : 'text-slate-600 hover:text-slate-800')}>
                 <ArrowUpRight className="h-4 w-4" />
                 <span>Pengeluaran</span>
               </button>
@@ -606,7 +633,7 @@ export function TransactionFormView(props: TransactionFormViewProps) {
               onDeleteCategory={props.onDeleteCategory}
             />
 
-            <button type="submit" disabled={props.isSubmitting} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 py-4 text-lg font-semibold text-white shadow-lg shadow-slate-900/15 transition-all hover:bg-slate-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70">
+            <button type="submit" disabled={props.isSubmitting} className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 py-4 text-lg font-semibold text-white shadow-xl shadow-slate-900/20 transition-all hover:bg-slate-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70">
               {props.isSubmitting ? (
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
               ) : (
