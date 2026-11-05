@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { auth, db, doc, setDoc, getDoc } from '../firebase';
+import { auth, collection, db, doc, setDoc, getDoc, onSnapshot, query, updateDoc, where } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { buildUserProfileData } from '../lib/userProfile';
-import { SettingsSkeleton, SettingsView } from './SettingsView';
+import { SettingsSkeleton, SettingsView, type HouseholdJoinRequest } from './SettingsView';
 
 export function Settings({ householdId, onLogout }: { householdId: string; onLogout: () => void }) {
   const [displayName, setDisplayName] = useState('');
@@ -12,13 +12,21 @@ export function Settings({ householdId, onLogout }: { householdId: string; onLog
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [joinRequests, setJoinRequests] = useState<HouseholdJoinRequest[]>([]);
+  const [reviewingJoinRequestUid, setReviewingJoinRequestUid] = useState<string | null>(null);
+  const [joinRequestError, setJoinRequestError] = useState('');
 
   useEffect(() => {
+    let unsubscribeJoinRequests = () => {};
+    let active = true;
     const fetchData = async () => {
-      if (!auth.currentUser) return;
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
+      setOwnerUid(null);
+      setJoinRequests([]);
 
       try {
-        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
         if (userDoc.exists()) {
           setDisplayName(userDoc.data().displayName || '');
         }
@@ -27,7 +35,20 @@ export function Settings({ householdId, onLogout }: { householdId: string; onLog
         if (householdDoc.exists()) {
           const data = householdDoc.data();
           setPayday(String(data.payday || 25));
-          setOwnerUid(data.ownerUid || null);
+          const currentOwnerUid = data.ownerUid || null;
+          setOwnerUid(currentOwnerUid);
+          if (currentOwnerUid === currentUser.uid) {
+            const requestsPath = `households/${householdId}/joinRequests`;
+            const unsubscribe = onSnapshot(
+              query(collection(db, requestsPath), where('status', '==', 'pending')),
+              (snapshot) => setJoinRequests(snapshot.docs.map((item) => ({ id: item.id, ...(item.data() as Omit<HouseholdJoinRequest, 'id'>) }))),
+              () => setJoinRequestError('Permintaan household tidak dapat dimuat.'),
+            );
+            if (active) unsubscribeJoinRequests = unsubscribe;
+            else unsubscribe();
+          } else {
+            setJoinRequests([]);
+          }
         }
       } catch (error) {
         console.error('Error fetching settings:', error);
@@ -37,6 +58,10 @@ export function Settings({ householdId, onLogout }: { householdId: string; onLog
     };
 
     fetchData();
+    return () => {
+      active = false;
+      unsubscribeJoinRequests();
+    };
   }, [householdId]);
 
   const isOwner = auth.currentUser?.uid === ownerUid;
@@ -78,6 +103,18 @@ export function Settings({ householdId, onLogout }: { householdId: string; onLog
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleReviewJoinRequest = async (userUid: string, status: 'approved' | 'denied') => {
+    setReviewingJoinRequestUid(userUid);
+    setJoinRequestError('');
+    try {
+      await updateDoc(doc(db, 'households', householdId, 'joinRequests', userUid), { status });
+    } catch {
+      setJoinRequestError('Permintaan tidak berhasil diperbarui. Coba lagi.');
+    } finally {
+      setReviewingJoinRequestUid(null);
+    }
+  };
+
   if (loading) {
     return <SettingsSkeleton />;
   }
@@ -88,6 +125,9 @@ export function Settings({ householdId, onLogout }: { householdId: string; onLog
       payday={payday}
       householdId={householdId}
       isOwner={isOwner}
+      joinRequests={joinRequests}
+      reviewingJoinRequestUid={reviewingJoinRequestUid}
+      joinRequestError={joinRequestError}
       saving={saving}
       success={success}
       copied={copied}
@@ -95,6 +135,7 @@ export function Settings({ householdId, onLogout }: { householdId: string; onLog
       onPaydayChange={setPayday}
       onSave={handleSave}
       onCopyHouseholdId={copyToClipboard}
+      onReviewJoinRequest={handleReviewJoinRequest}
       onLogout={onLogout}
     />
   );

@@ -1,14 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   auth,
+  arrayUnion,
   createUserWithEmailAndPassword,
   db,
   doc,
   fetchSignInMethodsForEmail,
   getDoc,
   loginWithGoogle,
+  onSnapshot,
   setDoc,
   signInWithEmailAndPassword,
+  updateDoc,
   updateProfile,
 } from '../firebase';
 import { motion } from 'motion/react';
@@ -28,6 +31,7 @@ import {
 } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { buildUserProfileData } from '../lib/userProfile';
+import { isHouseholdMember } from '../lib/householdAccess';
 import { cn } from '../lib/utils';
 
 type AuthScreen = 'welcome' | 'email-signin' | 'email-signup' | 'post-login-choice';
@@ -95,6 +99,8 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loadingAction, setLoadingAction] = useState<LoadingAction>(null);
   const [error, setError] = useState('');
+  const [joinRequestStatus, setJoinRequestStatus] = useState<'idle' | 'pending' | 'approved' | 'denied'>('idle');
+  const joiningApprovedRequest = useRef(false);
 
   const isBusy = loadingAction !== null;
   const requiresProfileCompletion = !!user && !displayName.trim();
@@ -102,6 +108,7 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
     isBusy ||
     !displayName.trim() ||
     !householdId.trim() ||
+    (setupMode === 'join' && joinRequestStatus === 'pending') ||
     (setupMode === 'create' && (!payday.trim() || Number(payday) < 1 || Number(payday) > 31));
 
   const greetingLabel = useMemo(() => {
@@ -128,7 +135,7 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
       setAuthScreen('post-login-choice');
       setSetupMode('choice');
 
-      if (profile.currentHouseholdId) {
+      if (profile.currentHouseholdId && await isHouseholdMember(db, profile.currentHouseholdId, currentUser.uid)) {
         onComplete(profile.currentHouseholdId);
       }
     });
@@ -146,6 +153,44 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
 
     return result;
   };
+
+  const finishApprovedJoin = useCallback(async (hid: string) => {
+    if (!user || joiningApprovedRequest.current) return;
+    joiningApprovedRequest.current = true;
+    setLoadingAction('household');
+    setError('');
+
+    const resolvedDisplayName = displayName.trim() || user.displayName || user.email || 'Anggota Moni';
+    try {
+      await updateDoc(doc(db, 'households', hid), { members: arrayUnion(user.uid) });
+      if (user.displayName !== resolvedDisplayName) await updateProfile(user, { displayName: resolvedDisplayName });
+      await setDoc(
+        doc(db, 'users', user.uid),
+        buildUserProfileData(user, { currentHouseholdId: hid, displayName: resolvedDisplayName }),
+        { merge: true },
+      );
+      onComplete(hid);
+    } catch {
+      setError('Permintaan disetujui, tetapi Anda belum dapat bergabung. Coba kirim ulang permintaan ini.');
+    } finally {
+      joiningApprovedRequest.current = false;
+      setLoadingAction(null);
+    }
+  }, [displayName, onComplete, user]);
+
+  useEffect(() => {
+    if (!user || setupMode !== 'join' || joinRequestStatus !== 'pending' || !householdId.trim()) return;
+    const hid = householdId.trim().toLowerCase();
+    const requestRef = doc(db, 'households', hid, 'joinRequests', user.uid);
+    return onSnapshot(requestRef, (snapshot) => {
+      if (!snapshot.exists()) return;
+      if (snapshot.data().status === 'approved') {
+        setJoinRequestStatus('approved');
+        void finishApprovedJoin(hid);
+      }
+      if (snapshot.data().status === 'denied') setJoinRequestStatus('denied');
+    });
+  }, [finishApprovedJoin, householdId, joinRequestStatus, setupMode, user]);
 
   const loadUserProfile = async (uid: string) => {
     const path = `users/${uid}`;
@@ -203,6 +248,7 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
   const handleStartCreate = () => {
     setError('');
     setHouseholdId(generateRandomId());
+    setJoinRequestStatus('idle');
     setSetupMode('create');
   };
 
@@ -226,8 +272,10 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
 
       const profile = await loadUserProfile(result.user.uid);
       if (profile.currentHouseholdId) {
-        onComplete(profile.currentHouseholdId);
-        return;
+        if (await isHouseholdMember(db, profile.currentHouseholdId, result.user.uid)) {
+          onComplete(profile.currentHouseholdId);
+          return;
+        }
       }
 
       setAuthScreen('post-login-choice');
@@ -326,38 +374,35 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
     if (!user || !householdId.trim()) return;
 
     const hid = householdId.trim().toLowerCase();
-    const householdPath = `households/${hid}`;
-    const userPath = `users/${user.uid}`;
-
     setLoadingAction('household');
     setError('');
 
     try {
       const householdRef = doc(db, 'households', hid);
-      const householdDoc = await getDoc(householdRef);
 
       if (setupMode === 'join') {
-        if (!householdDoc.exists()) {
-          throw new Error('ID keuangan tidak ditemukan. Pastikan kode yang Anda masukkan sudah benar.');
+        const requestRef = doc(db, 'households', hid, 'joinRequests', user.uid);
+        const request = await getDoc(requestRef);
+        const resolvedDisplayName = displayName.trim() || user.displayName || 'Anggota Moni';
+
+        if (request.exists() && request.data().status === 'approved') {
+          await finishApprovedJoin(hid);
+          return;
         }
 
-        const members = householdDoc.data().members || [];
-        if (!members.includes(user.uid)) {
-          await setDoc(
-            householdRef,
-            {
-              members: [...members, user.uid],
-            },
-            { merge: true },
-          );
-        }
+        const requestData = {
+          householdId: hid,
+          userUid: user.uid,
+          displayName: resolvedDisplayName,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+        };
+        if (request.exists() && request.data().status === 'denied') await updateDoc(requestRef, requestData);
+        else if (!request.exists()) await setDoc(requestRef, requestData);
+        setJoinRequestStatus('pending');
+        setError('');
+        return;
       } else {
-        if (householdDoc.exists()) {
-          const nextId = generateRandomId();
-          setHouseholdId(nextId);
-          throw new Error('ID baru sedang bentrok dengan data lain. Kami sudah siapkan ID baru, silakan simpan lagi.');
-        }
-
         await setDoc(householdRef, {
           name: 'My Household',
           members: [user.uid],
@@ -374,7 +419,7 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
       }
 
       await setDoc(
-        doc(db, userPath),
+        doc(db, 'users', user.uid),
         buildUserProfileData(user, {
           currentHouseholdId: hid,
           displayName: resolvedDisplayName,
@@ -384,10 +429,15 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
 
       onComplete(hid);
     } catch (err: any) {
-      if (err.message?.includes('Missing or insufficient permissions') || err.message?.includes('permission-denied')) {
-        handleFirestoreError(err, OperationType.WRITE, householdPath);
+      if (setupMode === 'join') {
+        setError('ID tidak ditemukan atau permintaan belum dapat dikirim. Periksa ID lalu coba lagi.');
+      } else if (err.message?.includes('Missing or insufficient permissions') || err.message?.includes('permission-denied')) {
+        const nextId = generateRandomId();
+        setHouseholdId(nextId);
+        setError('ID baru bentrok dengan household lain. ID baru sudah disiapkan; coba lagi.');
+      } else {
+        setError(err.message || 'Gagal memproses household. Silakan coba lagi.');
       }
-      setError(err.message || 'Gagal memproses ID keuangan. Silakan coba lagi.');
     } finally {
       setLoadingAction(null);
     }
@@ -604,6 +654,7 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
         onClick={() => {
           setError('');
           setHouseholdId('');
+          setJoinRequestStatus('idle');
           setSetupMode('join');
         }}
         className="w-full rounded-3xl border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300"
@@ -626,6 +677,7 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
         type="button"
         onClick={() => {
           setError('');
+          setJoinRequestStatus('idle');
           setSetupMode('choice');
         }}
         className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-slate-700"
@@ -662,6 +714,7 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
                   className="w-full rounded-2xl bg-slate-50 py-3 pl-12 pr-4 text-slate-900 outline-none transition focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
+              <p className="text-xs text-slate-500">Pemilik household perlu menyetujui permintaan sebelum Anda dapat melihat datanya.</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -689,6 +742,22 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
         </div>
       </div>
 
+      {setupMode === 'join' && joinRequestStatus === 'pending' && (
+        <p className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Permintaan sudah dikirim. Moni akan bergabung setelah pemilik menyetujuinya.
+        </p>
+      )}
+      {setupMode === 'join' && joinRequestStatus === 'denied' && (
+        <p className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          Permintaan sebelumnya ditolak. Pastikan ID household sebelum mengajukan ulang.
+        </p>
+      )}
+      {setupMode === 'join' && joinRequestStatus === 'approved' && (
+        <p className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          Permintaan disetujui. Lanjutkan untuk membuka akses household.
+        </p>
+      )}
+
       <div className="flex gap-3">
         <button
           type="button"
@@ -704,7 +773,7 @@ export function AuthSetup({ onComplete }: { onComplete: (householdId: string) =>
         >
           <span className="flex items-center justify-center gap-2">
             {loadingAction === 'household' ? <LoadingSpinner /> : null}
-            {setupMode === 'create' ? 'Buat Sekarang' : 'Gabung Sekarang'}
+            {setupMode === 'create' ? 'Buat Sekarang' : joinRequestStatus === 'pending' ? 'Menunggu persetujuan' : joinRequestStatus === 'approved' ? 'Lanjutkan bergabung' : joinRequestStatus === 'denied' ? 'Ajukan ulang' : 'Kirim permintaan'}
           </span>
         </button>
       </div>
