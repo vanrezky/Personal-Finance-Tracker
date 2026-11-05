@@ -1,9 +1,10 @@
 import { GoogleGenAI } from '@google/genai';
 import { createVerify } from 'node:crypto';
+import { normalizeScanReceiptResult, ScanReceiptValidationError, validateReceiptImageBase64 } from '../src/lib/scanReceiptSchema';
 
 type ScanReceiptRequestBody = {
-  imageBase64?: string;
-  categories?: string[];
+  imageBase64?: unknown;
+  categories?: unknown;
 };
 
 type VercelLikeRequest = {
@@ -158,7 +159,7 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
   }
 
   const imageBase64 = req.body?.imageBase64;
-  const categories = Array.isArray(req.body?.categories) ? req.body?.categories.filter(Boolean) : [];
+  const rawCategories = req.body?.categories;
   const apiKey = process.env.GEMINI_API_KEY;
   const projectId = process.env.VITE_FIREBASE_PROJECT_ID;
   const authHeader = getHeaderValue(req.headers?.authorization ?? req.headers?.['Authorization']);
@@ -174,13 +175,27 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
     return;
   }
 
-  if (!imageBase64) {
-    res.status(400).json({ error: 'Gambar struk tidak ditemukan.' });
+  if (typeof imageBase64 === 'string' && imageBase64.length > MAX_IMAGE_BASE64_LENGTH) {
+    res.status(413).json({ error: 'Ukuran gambar terlalu besar. Coba ambil foto yang lebih ringan.' });
     return;
   }
 
-  if (imageBase64.length > MAX_IMAGE_BASE64_LENGTH) {
-    res.status(413).json({ error: 'Ukuran gambar terlalu besar. Coba ambil foto yang lebih ringan.' });
+  if (!validateReceiptImageBase64(imageBase64)) {
+    res.status(400).json({ error: 'Gambar struk tidak ditemukan atau formatnya tidak valid.' });
+    return;
+  }
+
+  if (rawCategories !== undefined && (!Array.isArray(rawCategories) || rawCategories.length > 100 || rawCategories.some((category) => typeof category !== 'string' || !category.trim() || category.length > 100))) {
+    res.status(400).json({ error: 'Daftar kategori tidak valid.' });
+    return;
+  }
+
+  const categories = Array.isArray(rawCategories) ? [...new Set(rawCategories as string[])] : ['Lainnya'];
+  if (!categories.includes('Lainnya')) categories.push('Lainnya');
+
+  const imageBytes = Buffer.from(imageBase64, 'base64');
+  if (imageBytes.length < 3 || imageBytes[0] !== 0xff || imageBytes[1] !== 0xd8 || imageBytes[2] !== 0xff) {
+    res.status(400).json({ error: 'Gambar harus berupa JPEG yang valid.' });
     return;
   }
 
@@ -195,18 +210,22 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
 
     const ai = new GoogleGenAI({ apiKey });
     const prompt = `
-      Analisis struk belanja ini dan kembalikan JSON valid dengan bentuk berikut:
+      Analisis bukti pembayaran atau struk ini dan kembalikan JSON valid dengan bentuk berikut:
       {
+        "type": "expense" | "income",
         "amount": number,
         "category": string,
-        "note": string
+        "note": string,
+        "date": "YYYY-MM-DD" | null
       }
 
       Aturan:
-      - amount adalah total belanja utama, angka saja tanpa titik/koma.
-      - category harus dipilih dari daftar ini jika cocok: ${categories.join(', ') || 'Lainnya'}.
-      - Jika tidak ada yang cocok, gunakan "Lainnya".
-      - note adalah ringkasan singkat nama toko atau isi belanja utama, maksimal 50 karakter.
+      - type adalah expense untuk uang keluar dan income untuk uang masuk.
+      - amount adalah nilai transaksi utama dalam rupiah, angka bulat positif tanpa titik/koma.
+      - category harus dipilih persis dari daftar ini: ${categories.join(', ')}.
+      - note adalah nama toko/pengirim atau ringkasan singkat, maksimal 50 karakter.
+      - date adalah tanggal transaksi yang terlihat dalam format YYYY-MM-DD; gunakan null jika tidak jelas.
+      - Jangan gunakan nomor rekening, nomor referensi, atau informasi sensitif sebagai note.
       - Jangan kembalikan markdown atau teks lain selain JSON.
     `;
 
@@ -228,20 +247,21 @@ export default async function handler(req: VercelLikeRequest, res: VercelLikeRes
       return;
     }
 
-    const parsed = JSON.parse(response.text);
-    res.status(200).json({
-      amount: typeof parsed.amount === 'number' ? parsed.amount : null,
-      category: typeof parsed.category === 'string' ? parsed.category : 'Lainnya',
-      note: typeof parsed.note === 'string' ? parsed.note : '',
-    });
+    const parsed = JSON.parse(response.text) as unknown;
+    const normalized = normalizeScanReceiptResult(parsed, categories);
+    res.status(200).json(normalized);
   } catch (error) {
-    console.error('scan-receipt failed', error);
-    const message = error instanceof Error ? error.message : 'Gagal menganalisa struk.';
-    const statusCode = message.includes('login') || message.includes('Token') || message.includes('Issuer') || message.includes('kedaluwarsa')
-      ? 401
-      : message.includes('Terlalu banyak')
-        ? 429
-        : 500;
-    res.status(statusCode).json({ error: message });
+    const message = error instanceof Error ? error.message : '';
+    const normalizedMessage = message.toLowerCase();
+    const isAuthError = normalizedMessage.includes('token') || normalizedMessage.includes('issuer') || normalizedMessage.includes('kedaluwarsa') || normalizedMessage.includes('login');
+    if (isAuthError) {
+      res.status(401).json({ error: 'Sesi login tidak valid. Silakan login ulang.' });
+    } else if (message.includes('Terlalu banyak')) {
+      res.status(429).json({ error: 'Terlalu banyak permintaan scan. Coba lagi dalam 1 menit.' });
+    } else if (error instanceof ScanReceiptValidationError || error instanceof SyntaxError) {
+      res.status(502).json({ error: 'Hasil scan tidak dapat divalidasi. Periksa gambar dan coba lagi.' });
+    } else {
+      res.status(500).json({ error: 'Gagal menganalisa gambar. Coba lagi beberapa saat.' });
+    }
   }
 }
