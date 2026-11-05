@@ -14,7 +14,7 @@
     "test": "npm run test:unit && npm run test:emulator"
   },
   "engines": {
-    "node": "26.x"
+    "node": "24.x"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
