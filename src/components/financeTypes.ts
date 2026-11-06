@@ -12,21 +12,6 @@ export interface TransactionRecord {
   authorUid?: string;
   authorName?: string;
   receiptImage?: string;
-  captureFingerprint?: string;
-}
-
-export interface PendingCapture {
-  id: string;
-  householdId: string;
-  type: TransactionType;
-  amount: number;
-  category: string;
-  note: string;
-  date: string;
-  createdAt: string;
-  authorUid: string;
-  authorName: string;
-  captureFingerprint: string;
 }
 
 export interface CategoryRecord {

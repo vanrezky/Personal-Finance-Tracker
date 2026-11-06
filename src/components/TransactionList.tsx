@@ -1,13 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { format, parseISO, subDays } from 'date-fns';
 import type { DocumentData, QueryDocumentSnapshot, QueryConstraint } from 'firebase/firestore';
-import { auth, db, collection, query, orderBy, onSnapshot, doc, deleteDoc, getDocs, limit, startAfter, where } from '../firebase';
+import { db, collection, query, orderBy, onSnapshot, doc, deleteDoc, getDocs, limit, startAfter, where } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { TransactionListSkeleton, TransactionListView } from './TransactionListView';
-import { discardPendingCapture } from '../lib/transactionCapture';
-import { formatCurrency } from '../lib/utils';
-import type { PendingCapture, TransactionRecord } from './financeTypes';
-import { Receipt, Trash2 } from 'lucide-react';
+import type { TransactionRecord } from './financeTypes';
 
 export type TransactionDurationFilter = 'today' | 'yesterday' | 'last7days' | 'all';
 
@@ -45,7 +42,7 @@ function normalizeTransactionDateTime(value: string) {
   return `${value}T00:00:00`;
 }
 
-export function TransactionList({ householdId, refreshKey, onEdit, onReviewCapture }: { householdId: string; refreshKey: number; onEdit: (transaction: TransactionRecord) => void; onReviewCapture: (capture: PendingCapture) => void }) {
+export function TransactionList({ householdId, refreshKey, onEdit }: { householdId: string; refreshKey: number; onEdit: (transaction: TransactionRecord) => void }) {
   const [transactions, setTransactions] = useState<TransactionRecord[] | null>(null);
   const [lastTransactionSnapshot, setLastTransactionSnapshot] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMoreTransactions, setHasMoreTransactions] = useState(false);
@@ -54,7 +51,6 @@ export function TransactionList({ householdId, refreshKey, onEdit, onReviewCaptu
   const [viewingReceipt, setViewingReceipt] = useState<string | null>(null);
   const [viewingDetail, setViewingDetail] = useState<TransactionRecord | null>(null);
   const [customCategories, setCustomCategories] = useState<string[]>([]);
-  const [pendingCaptures, setPendingCaptures] = useState<PendingCapture[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [filterDuration, setFilterDuration] = useState<TransactionDurationFilter>('today');
   const [filterCategory, setFilterCategory] = useState('');
@@ -156,28 +152,6 @@ export function TransactionList({ householdId, refreshKey, onEdit, onReviewCaptu
     return () => unsubscribe();
   }, [householdId]);
 
-  useEffect(() => {
-    const userUid = auth.currentUser?.uid;
-    if (!userUid) return;
-    const path = `households/${householdId}/pendingCaptures`;
-    const unsubscribe = onSnapshot(
-      query(collection(db, path), where('authorUid', '==', userUid)),
-      (snapshot) => setPendingCaptures(snapshot.docs
-        .map((item) => ({ id: item.id, ...(item.data() as Omit<PendingCapture, 'id'>) }))
-        .sort((left, right) => right.createdAt.localeCompare(left.createdAt))),
-      (error) => handleFirestoreError(error, OperationType.LIST, path),
-    );
-    return () => unsubscribe();
-  }, [householdId]);
-
-  const handleDiscardCapture = async (captureId: string) => {
-    try {
-      await discardPendingCapture(db, householdId, captureId);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `households/${householdId}/pendingCaptures/${captureId}`);
-    }
-  };
-
   const handleDelete = async () => {
     if (!deletingId) return;
 
@@ -238,35 +212,7 @@ export function TransactionList({ householdId, refreshKey, onEdit, onReviewCaptu
   }
 
   return (
-    <div className="space-y-5">
-      {pendingCaptures.length > 0 && (
-        <section className="rounded-3xl border border-indigo-100 bg-white p-4 shadow-sm">
-          <div className="mb-3 flex items-center justify-between">
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">Capture menunggu konfirmasi</h2>
-              <p className="mt-1 text-xs text-slate-500">Belum dihitung sebagai transaksi. Gambar tidak disimpan.</p>
-            </div>
-            <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">{pendingCaptures.length}</span>
-          </div>
-          <ul className="space-y-2">
-            {pendingCaptures.map((capture) => (
-              <li key={capture.id} className="flex items-center gap-2 rounded-2xl bg-slate-50 p-3">
-                <button type="button" onClick={() => onReviewCapture(capture)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-                  <span className="rounded-xl bg-white p-2 text-indigo-600"><Receipt className="h-4 w-4" /></span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-slate-800">{capture.category}</span>
-                    <span className="block text-xs text-slate-500">{formatCurrency(capture.amount)} · {capture.date}</span>
-                  </span>
-                </button>
-                <button type="button" onClick={() => void handleDiscardCapture(capture.id)} aria-label="Hapus capture tertunda" className="rounded-xl p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600">
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-      <TransactionListView
+    <TransactionListView
       transactions={transactions}
       groupedTransactions={viewModel.groupedTransactions}
       uniqueCategories={viewModel.uniqueCategories}
@@ -316,7 +262,6 @@ export function TransactionList({ householdId, refreshKey, onEdit, onReviewCaptu
       onRequestDelete={setDeletingId}
       onConfirmDelete={handleDelete}
       onEdit={onEdit}
-      />
-    </div>
+    />
   );
 }

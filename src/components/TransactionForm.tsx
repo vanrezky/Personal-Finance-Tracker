@@ -17,10 +17,8 @@ import {
   deleteDoc,
 } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
-import { isDateOnly } from '../lib/scanReceiptSchema';
 import { TransactionFormView } from './TransactionFormView';
-import { approvePendingCapture, createPendingCapture, findPotentialDuplicateTransactions, prepareCaptureImage, scanReceiptImage, type CaptureFields } from '../lib/transactionCapture';
-import type { CategoryRecord, PendingCapture, TransactionRecord, TransactionType } from './financeTypes';
+import type { CategoryRecord, TransactionRecord, TransactionType } from './financeTypes';
 
 declare global {
   interface Window {
@@ -34,7 +32,6 @@ interface TransactionFormProps {
   onClose: () => void;
   onNotify: (payload: { title: string; message: string }) => void;
   initialData?: TransactionRecord;
-  initialCapture?: PendingCapture;
 }
 
 export const EXPENSE_CATEGORIES = [
@@ -66,7 +63,6 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
 };
 
 function toDateValue(value: string | undefined) {
-  if (value && isDateOnly(value)) return value;
   const source = value ? new Date(value) : new Date();
   const year = source.getFullYear();
   const month = String(source.getMonth() + 1).padStart(2, '0');
@@ -74,25 +70,18 @@ function toDateValue(value: string | undefined) {
   return `${year}-${month}-${day}`;
 }
 
-export function TransactionForm({ householdId, onClose, onNotify, initialData, initialCapture }: TransactionFormProps) {
-  const [type, setType] = useState<TransactionType>(initialCapture?.type || initialData?.type || 'expense');
-  const initialAmount = initialCapture?.amount ?? initialData?.amount;
-  const [amountStr, setAmountStr] = useState(initialAmount ? new Intl.NumberFormat('id-ID').format(initialAmount) : '');
-  const [category, setCategory] = useState(initialCapture?.category || initialData?.category || '');
-  const [note, setNote] = useState(initialCapture?.note ?? initialData?.note ?? '');
-  const [date, setDate] = useState(() => toDateValue(initialCapture?.date || initialData?.date));
+export function TransactionForm({ householdId, onClose, onNotify, initialData }: TransactionFormProps) {
+  const [type, setType] = useState<TransactionType>(initialData?.type || 'expense');
+  const [amountStr, setAmountStr] = useState(initialData?.amount ? new Intl.NumberFormat('id-ID').format(initialData.amount) : '');
+  const [category, setCategory] = useState(initialData?.category || '');
+  const [note, setNote] = useState(initialData?.note || '');
+  const [date, setDate] = useState(() => toDateValue(initialData?.date));
   const [isListening, setIsListening] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [receiptImage, setReceiptImage] = useState<string | null>(initialData?.receiptImage || null);
-  const [capturePreview, setCapturePreview] = useState<string | null>(null);
-  const [pendingCaptureId, setPendingCaptureId] = useState<string | null>(initialCapture?.id ?? null);
-  const [captureError, setCaptureError] = useState('');
-  const [blockedFingerprint, setBlockedFingerprint] = useState<string | null>(null);
-  const [duplicateConfirmationKey, setDuplicateConfirmationKey] = useState('');
-  const [receiptScanState, setReceiptScanState] = useState<'idle' | 'selected' | 'analyzing' | 'success' | 'error'>(() => initialData?.receiptImage || initialCapture ? 'success' : 'idle');
+  const [receiptScanState, setReceiptScanState] = useState<'idle' | 'selected' | 'analyzing' | 'success' | 'error'>(() => initialData?.receiptImage ? 'success' : 'idle');
   const [customCategories, setCustomCategories] = useState<CategoryRecord[]>([]);
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
-  const [transactionsLoaded, setTransactionsLoaded] = useState(false);
   const [searchCategory, setSearchCategory] = useState('');
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [isScanSourcePickerOpen, setIsScanSourcePickerOpen] = useState(false);
@@ -138,7 +127,6 @@ export function TransactionForm({ householdId, onClose, onNotify, initialData, i
           ...(snapshotDoc.data() as Omit<TransactionRecord, 'id'>),
         }));
         setTransactions(items);
-        setTransactionsLoaded(true);
       },
       (error) => {
         handleFirestoreError(error, OperationType.LIST, path);
@@ -443,43 +431,75 @@ export function TransactionForm({ householdId, onClose, onNotify, initialData, i
 
     setIsScanSourcePickerOpen(false);
     setIsScanning(true);
-    setCaptureError('');
-    setBlockedFingerprint(null);
     try {
-      const prepared = await prepareCaptureImage(file);
-      setCapturePreview(prepared.previewDataUrl);
+      const image = new Image();
+      const objectUrl = URL.createObjectURL(file);
+
+      await new Promise((resolve, reject) => {
+        image.onload = resolve;
+        image.onerror = reject;
+        image.src = objectUrl;
+      });
+
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Could not get canvas context');
+
+      const MAX_SIZE = 800;
+      let width = image.width;
+      let height = image.height;
+      if (width > height) {
+        if (width > MAX_SIZE) {
+          height *= MAX_SIZE / width;
+          width = MAX_SIZE;
+        }
+      } else if (height > MAX_SIZE) {
+        width *= MAX_SIZE / height;
+        height = MAX_SIZE;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      context.drawImage(image, 0, 0, width, height);
+
+      const base64DataUrl = canvas.toDataURL('image/jpeg', 0.6);
+      const base64Data = base64DataUrl.split(',')[1];
+      setReceiptImage(base64DataUrl);
       setReceiptScanState('analyzing');
-      const currentUser = auth.currentUser;
-      if (!currentUser) throw new Error('Sesi login tidak valid. Silakan login ulang.');
-      const categories = [...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES, ...customCategories.map((item) => item.name)];
-      const result = await scanReceiptImage(prepared.imageBase64, await currentUser.getIdToken(), categories);
-      const captureFields: CaptureFields = {
-        type: result.type,
-        amount: result.amount,
-        category: result.category,
-        note: result.note,
-        date: toDateValue(result.date ?? undefined),
-      };
-      setType(captureFields.type);
-      setAmountStr(new Intl.NumberFormat('id-ID').format(captureFields.amount));
-      setCategory(captureFields.category);
-      setNote(captureFields.note);
-      setDate(captureFields.date);
-      const captureId = await createPendingCapture(
-        db,
-        householdId,
-        currentUser.uid,
-        currentUser.displayName || '',
-        captureFields,
-        prepared.fingerprint,
-      );
-      setPendingCaptureId(captureId);
+      URL.revokeObjectURL(objectUrl);
+      const idToken = await auth.currentUser.getIdToken();
+
+      const response = await fetch('/api/scan-receipt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          imageBase64: base64Data,
+          categories: [...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES, ...customCategories.map((item) => item.name)],
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Gagal menganalisa struk');
+      }
+
+      if (result.amount) setAmountStr(new Intl.NumberFormat('id-ID').format(result.amount));
+      if (result.category) {
+        setCategory(result.category);
+        setType(INCOME_CATEGORIES.includes(result.category) ? 'income' : 'expense');
+      }
+      if (result.note) setNote(result.note);
       setReceiptScanState('success');
     } catch (error) {
+      console.error('Error scanning receipt:', error);
       const message = error instanceof Error ? error.message : 'Gagal memindai struk. Pastikan gambar jelas dan coba lagi.';
-      setCaptureError(message);
-      if (message.includes('sudah pernah') || message.includes('sudah tercatat') || (error as { code?: string })?.code === 'permission-denied') setBlockedFingerprint('duplicate');
-      onNotify({ title: 'Scan Transaksi Gagal', message });
+      onNotify({
+        title: 'Scan Struk Gagal',
+        message,
+      });
       setReceiptScanState('error');
     } finally {
       setIsScanning(false);
@@ -491,17 +511,7 @@ export function TransactionForm({ householdId, onClose, onNotify, initialData, i
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const numericAmount = parseInt(amountStr.replace(/\D/g, ''), 10);
-    if (!numericAmount || Number.isNaN(numericAmount) || !category || !auth.currentUser || isSubmitting || blockedFingerprint) return;
-
-    if (pendingCaptureId && !transactionsLoaded) return;
-
-    const captureFields: CaptureFields = { type, amount: numericAmount, category, note, date: toDateValue(date) };
-    const matches = pendingCaptureId ? findPotentialDuplicateTransactions(transactions, captureFields) : [];
-    const confirmationKey = JSON.stringify({ fields: captureFields, matches: matches.map((item) => item.id).sort() });
-    if (matches.length > 0 && duplicateConfirmationKey !== confirmationKey) {
-      setDuplicateConfirmationKey(confirmationKey);
-      return;
-    }
+    if (!numericAmount || Number.isNaN(numericAmount) || !category || !auth.currentUser || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
@@ -515,15 +525,6 @@ export function TransactionForm({ householdId, onClose, onNotify, initialData, i
           date: toDateValue(date),
           ...(receiptImage ? { receiptImage } : { receiptImage: deleteField() }),
         });
-      } else if (pendingCaptureId) {
-        await approvePendingCapture(
-          db,
-          householdId,
-          pendingCaptureId,
-          auth.currentUser.uid,
-          auth.currentUser.displayName || '',
-          captureFields,
-        );
       } else {
         const path = `households/${householdId}/transactions`;
         await addDoc(collection(db, path), {
@@ -535,21 +536,22 @@ export function TransactionForm({ householdId, onClose, onNotify, initialData, i
           date: toDateValue(date),
           createdAt: new Date().toISOString(),
           authorUid: auth.currentUser.uid,
-          authorName: auth.currentUser.displayName || '',
+          authorName: auth.currentUser.displayName || auth.currentUser.email || '',
+          ...(receiptImage && { receiptImage }),
         });
       }
 
       onNotify({
         title: initialData?.id ? 'Transaksi Diperbarui' : 'Transaksi Dibuat',
-        message: initialData?.id ? 'Perubahan transaksi berhasil disimpan.' : pendingCaptureId ? 'Capture dikonfirmasi dan masuk ke transaksi.' : 'Transaksi baru berhasil disimpan.',
+        message: initialData?.id ? 'Perubahan transaksi berhasil disimpan.' : 'Transaksi baru berhasil disimpan.',
       });
       onClose();
     } catch (error) {
-      if (error instanceof Error && error.message.includes('sudah tercatat')) {
-        setCaptureError(error.message);
-        setBlockedFingerprint('duplicate');
-      } else {
+      console.error('Failed to save transaction:', error);
+      try {
         handleFirestoreError(error, initialData?.id ? OperationType.UPDATE : OperationType.CREATE, initialData?.id ? `households/${householdId}/transactions/${initialData.id}` : `households/${householdId}/transactions`);
+      } catch (handledError) {
+        console.error('Transaction save error detail:', handledError);
       }
       onNotify({
         title: initialData?.id ? 'Gagal Memperbarui Transaksi' : 'Gagal Membuat Transaksi',
@@ -560,29 +562,15 @@ export function TransactionForm({ householdId, onClose, onNotify, initialData, i
     }
   };
 
-  const reviewAmount = parseInt(amountStr.replace(/\D/g, ''), 10);
-  const currentCaptureFields: CaptureFields = { type, amount: reviewAmount, category, note, date: toDateValue(date) };
-  const currentDuplicateMatches = pendingCaptureId && Number.isSafeInteger(reviewAmount) && reviewAmount > 0
-    ? findPotentialDuplicateTransactions(transactions, currentCaptureFields)
-    : [];
-  const currentDuplicateKey = JSON.stringify({ fields: currentCaptureFields, matches: currentDuplicateMatches.map((item) => item.id).sort() });
-
   return (
     <TransactionFormView
-      mode={pendingCaptureId ? 'review' : initialData ? 'edit' : 'create'}
+      mode={initialData ? 'edit' : 'create'}
       type={type}
       amountStr={amountStr}
       category={category}
       note={note}
       date={date}
       receiptImage={receiptImage}
-      capturePreview={capturePreview}
-      isPendingCapture={!!pendingCaptureId}
-      captureError={captureError}
-      isExactDuplicate={!!blockedFingerprint}
-      duplicateMatches={currentDuplicateMatches}
-      isDuplicateConfirmation={currentDuplicateMatches.length > 0 && duplicateConfirmationKey === currentDuplicateKey}
-      isDuplicateCheckPending={!!pendingCaptureId && !transactionsLoaded}
       receiptScanState={receiptScanState}
       isListening={isListening}
       isScanning={isScanning}
@@ -625,9 +613,6 @@ export function TransactionForm({ householdId, onClose, onNotify, initialData, i
       onDateChange={setDate}
       onClearReceiptImage={() => {
         setReceiptImage(null);
-        setCapturePreview(null);
-        setCaptureError('');
-        setBlockedFingerprint(null);
         setReceiptScanState('idle');
       }}
       onStartListening={startListening}

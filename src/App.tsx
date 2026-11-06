@@ -12,15 +12,12 @@ import { ArrowLeft, Plus, Activity, ListOrdered, LogOut, Download, CloudOff, Pie
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { handleFirestoreError, OperationType } from './lib/firestore-errors';
-import { isHouseholdMember } from './lib/householdAccess';
 import { Skeleton } from './components/Skeleton';
-import type { PendingCapture, TransactionRecord } from './components/financeTypes';
 
 export default function App() {
   const [householdId, setHouseholdId] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingTransaction, setEditingTransaction] = useState<TransactionRecord | null>(null);
-  const [reviewingCapture, setReviewingCapture] = useState<PendingCapture | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
   const [transactionListRefreshKey, setTransactionListRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'history' | 'reports' | 'settings' | 'shopping' | 'categories'>('dashboard');
   const [isLoaded, setIsLoaded] = useState(false);
@@ -79,8 +76,9 @@ export default function App() {
         const path = `users/${user.uid}`;
         try {
           const userDoc = await getDoc(doc(db, path));
-          const currentHouseholdId = userDoc.exists() ? userDoc.data().currentHouseholdId : null;
-          setHouseholdId(currentHouseholdId && await isHouseholdMember(db, currentHouseholdId, user.uid) ? currentHouseholdId : null);
+          if (userDoc.exists() && userDoc.data().currentHouseholdId) {
+            setHouseholdId(userDoc.data().currentHouseholdId);
+          }
         } catch (err) {
           handleFirestoreError(err, OperationType.GET, path);
         }
@@ -172,12 +170,6 @@ export default function App() {
             refreshKey={transactionListRefreshKey}
             onEdit={(transaction) => {
               setEditingTransaction(transaction);
-              setReviewingCapture(null);
-              setIsFormOpen(true);
-            }}
-            onReviewCapture={(capture) => {
-              setEditingTransaction(null);
-              setReviewingCapture(capture);
               setIsFormOpen(true);
             }}
           />
@@ -331,7 +323,6 @@ export default function App() {
           <button
             onClick={() => {
               setEditingTransaction(null);
-              setReviewingCapture(null);
               setIsFormOpen(true);
             }}
             disabled={!isLoaded || !householdId}
@@ -346,18 +337,16 @@ export default function App() {
       </nav>
 
       {/* Transaction Form Modal */}
-      {isFormOpen && householdId && (
+      {isFormOpen && (
         <TransactionForm 
           householdId={householdId} 
           onNotify={setAlertMessage}
           onClose={() => {
             setIsFormOpen(false);
             setEditingTransaction(null);
-            setReviewingCapture(null);
             setTransactionListRefreshKey((value) => value + 1);
           }} 
-          initialData={editingTransaction ?? undefined}
-          initialCapture={reviewingCapture ?? undefined}
+          initialData={editingTransaction}
         />
       )}
 

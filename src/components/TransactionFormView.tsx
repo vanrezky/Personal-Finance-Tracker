@@ -5,7 +5,7 @@ import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { DayPicker } from 'react-day-picker';
 import { cn } from '../lib/utils';
-import type { CategoryRecord, TransactionRecord, TransactionType } from './financeTypes';
+import type { CategoryRecord, TransactionType } from './financeTypes';
 
 interface CategoryOption {
   id: string;
@@ -15,20 +15,13 @@ interface CategoryOption {
 }
 
 interface TransactionFormViewProps {
-  mode: 'create' | 'edit' | 'review';
+  mode: 'create' | 'edit';
   type: TransactionType;
   amountStr: string;
   category: string;
   note: string;
   date: string;
   receiptImage: string | null;
-  capturePreview: string | null;
-  isPendingCapture: boolean;
-  captureError: string;
-  isExactDuplicate: boolean;
-  duplicateMatches: TransactionRecord[];
-  isDuplicateConfirmation: boolean;
-  isDuplicateCheckPending: boolean;
   receiptScanState: 'idle' | 'selected' | 'analyzing' | 'success' | 'error';
   isListening: boolean;
   isScanning: boolean;
@@ -87,7 +80,7 @@ function VoiceScanActions({
   cameraInputRef,
   galleryInputRef,
 }: Pick<TransactionFormViewProps, 'mode' | 'isListening' | 'isScanning' | 'isScanSourcePickerOpen' | 'onStartListening' | 'onOpenScanSourcePicker' | 'onCloseScanSourcePicker' | 'onTriggerCameraCapture' | 'onTriggerGalleryPick' | 'onReceiptFileChange' | 'cameraInputRef' | 'galleryInputRef'>) {
-  if (mode !== 'create') {
+  if (mode === 'edit') {
     return null;
   }
 
@@ -122,7 +115,7 @@ function VoiceScanActions({
             'relative rounded-full p-2 transition-all disabled:opacity-50',
             isScanning ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
           )}
-          title="Pindai transaksi"
+          title="Scan Struk"
         >
           {isScanning ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
         </button>
@@ -148,8 +141,8 @@ function VoiceScanActions({
               onClick={(event) => event.stopPropagation()}
             >
               <div className="mb-3">
-                <p className="text-sm font-semibold text-slate-900">Tambahkan bukti pembayaran</p>
-                <p className="mt-1 text-xs text-slate-500">Pilih screenshot dari galeri atau ambil foto bukti.</p>
+                <p className="text-sm font-semibold text-slate-900">Tambahkan foto struk</p>
+                <p className="mt-1 text-xs text-slate-500">Pilih sumber gambar seperti di aplikasi native.</p>
               </div>
               <div className="space-y-2">
                 <button
@@ -186,45 +179,42 @@ function VoiceScanActions({
 
 function ReceiptPreview({
   receiptImage,
-  capturePreview,
   receiptScanState,
   onClearReceiptImage,
-}: Pick<TransactionFormViewProps, 'receiptImage' | 'capturePreview' | 'receiptScanState' | 'onClearReceiptImage'>) {
-  const preview = capturePreview || receiptImage;
-  if (!preview) {
+}: Pick<TransactionFormViewProps, 'receiptImage' | 'receiptScanState' | 'onClearReceiptImage'>) {
+  if (!receiptImage) {
     return null;
   }
 
   const statusConfig = {
     selected: {
       icon: <Upload className="h-3 w-3 text-sky-300" />,
-      message: 'Gambar bukti pembayaran dipilih',
+      message: 'Gambar struk sudah dipilih',
     },
     analyzing: {
       icon: <Loader2 className="h-3 w-3 animate-spin text-amber-300" />,
-      message: 'Sedang menganalisa bukti pembayaran...',
+      message: 'Sedang menganalisa struk...',
     },
     success: {
       icon: <Check className="h-3 w-3 text-emerald-400" />,
-      message: 'Analisa transaksi selesai',
+      message: 'Analisa struk selesai',
     },
     error: {
       icon: <AlertCircle className="h-3 w-3 text-rose-300" />,
-      message: 'Analisa gagal, coba gambar lain',
+      message: 'Analisa gagal, gambar masih bisa dipakai',
     },
     idle: {
       icon: <Upload className="h-3 w-3 text-sky-300" />,
-      message: 'Gambar bukti pembayaran dipilih',
+      message: 'Gambar struk sudah dipilih',
     },
   }[receiptScanState];
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-      <img src={preview} alt="Bukti pembayaran" className="h-32 w-full object-cover opacity-80" />
+      <img src={receiptImage} alt="Struk" className="h-32 w-full object-cover opacity-80" />
       <button
         type="button"
         onClick={onClearReceiptImage}
-        aria-label="Hapus gambar sementara"
         className="absolute right-2 top-2 rounded-full bg-white/90 p-1.5 text-rose-500 shadow-sm transition-colors hover:bg-rose-50"
       >
         <X className="h-4 w-4" />
@@ -295,7 +285,6 @@ function BasicInputSection({
         <label className="px-1 text-sm font-medium text-slate-600">Catatan (Opsional)</label>
         <input
           type="text"
-          maxLength={1000}
           value={note}
           onChange={(event) => onNoteChange(event.target.value)}
           className="w-full rounded-2xl border-none bg-slate-50 px-4 py-4 text-slate-900 transition-shadow focus:ring-2 focus:ring-slate-900"
@@ -544,7 +533,7 @@ function DeleteCategoryConfirmModal({
 }
 
 export function TransactionFormView(props: TransactionFormViewProps) {
-  const title = props.mode === 'edit' ? 'Edit Transaksi' : props.mode === 'review' ? 'Periksa Capture' : 'Transaksi Baru';
+  const title = props.mode === 'edit' ? 'Edit Transaksi' : 'Transaksi Baru';
 
   return (
     <AnimatePresence>
@@ -589,23 +578,7 @@ export function TransactionFormView(props: TransactionFormViewProps) {
               </button>
             </div>
 
-            <ReceiptPreview receiptImage={props.receiptImage} capturePreview={props.capturePreview} receiptScanState={props.receiptScanState} onClearReceiptImage={props.onClearReceiptImage} />
-
-            {props.isPendingCapture && (
-              <p className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-xs text-indigo-800">
-                Periksa semua nilai sebelum konfirmasi. Gambar bukti hanya dipakai saat scan dan tidak disimpan.
-              </p>
-            )}
-            {props.captureError && <p role="alert" className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">{props.captureError}</p>}
-            {props.duplicateMatches.length > 0 && (
-              <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-                <p className="text-sm font-semibold text-amber-900">Transaksi ini mirip dengan {props.duplicateMatches.length} transaksi yang sudah ada.</p>
-                <ul className="mt-2 space-y-1 text-xs text-amber-800">
-                  {props.duplicateMatches.slice(0, 3).map((match) => <li key={match.id}>{match.date.slice(0, 10)} · {match.category} · Rp {new Intl.NumberFormat('id-ID').format(match.amount)}</li>)}
-                </ul>
-                <p className="mt-2 text-xs text-amber-800">{props.isDuplicateConfirmation ? 'Tekan tombol sekali lagi untuk mengonfirmasi transaksi ini.' : 'Periksa dahulu sebelum melanjutkan.'}</p>
-              </div>
-            )}
+            <ReceiptPreview receiptImage={props.receiptImage} receiptScanState={props.receiptScanState} onClearReceiptImage={props.onClearReceiptImage} />
 
             <BasicInputSection
               amountStr={props.amountStr}
@@ -633,13 +606,13 @@ export function TransactionFormView(props: TransactionFormViewProps) {
               onDeleteCategory={props.onDeleteCategory}
             />
 
-            <button type="submit" disabled={props.isSubmitting || props.isDuplicateCheckPending || props.isExactDuplicate} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 py-4 text-lg font-semibold text-white shadow-lg shadow-slate-900/15 transition-all hover:bg-slate-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70">
+            <button type="submit" disabled={props.isSubmitting} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 py-4 text-lg font-semibold text-white shadow-lg shadow-slate-900/15 transition-all hover:bg-slate-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70">
               {props.isSubmitting ? (
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
               ) : (
                 <>
                   <Check className="h-5 w-5" />
-                  {props.isDuplicateCheckPending ? 'Memeriksa transaksi...' : props.isDuplicateConfirmation ? 'Tetap simpan transaksi' : props.isPendingCapture ? 'Konfirmasi transaksi' : 'Simpan Transaksi'}
+                  Simpan Transaksi
                 </>
               )}
             </button>
